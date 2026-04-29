@@ -85,6 +85,10 @@ Use the correct comment syntax for the language:
 
 ### The Numbering Rules
 
+**The principle: one job, one address.** Itemisation is a navigation tool. Its value is proportional to how precisely it can land you on the relevant lines. Every distinct piece of code that does one specific thing — every concern a user might point at and ask "where's the code that does X?" — gets its own referenceable number.
+
+The test for any numbered block is simple: *if a user asked "where's the code that does X?", could you send them to this number, or would you have to direct them to a sub-part?* If you'd have to direct them inside, the block is too coarse — sub-number it. The unit-of-work differs by language (functions in JS/PHP, selector blocks in CSS, statements in SQL) but the principle is universal: one job, one address.
+
 **Number these:**
 
 - **Top-level sections** — logical groups of related code. Use a `SECTION:` label:
@@ -128,6 +132,46 @@ Use the correct comment syntax for the language:
 - Closing braces or trivial boilerplate
 - Lines that are already explained by their parent block's label
 
+### Calibration: matching granularity to the unit of work
+
+The trap is treating "block" as a structural concept (a chunk of code between blank lines) rather than a semantic one (a piece of code that does one job). A 50-line function that does one job is ONE number; five sibling 10-line functions are FIVE numbers, because each does its own job.
+
+**Number ONCE — these all do one job:**
+- A 50-line function that handles one operation end-to-end → one number
+- A config array passed as a single argument to one call → one number
+- A `switch` block where every case is a variation of the same dispatch → one number (sub-number only the genuinely distinct cases)
+- Comma-grouped CSS selectors sharing one body (`.btn-primary, .btn-secondary { ... }`) → one number
+
+**Number MULTIPLE times — each piece does its own job:**
+- A class with 5 methods → 1 number for the class, 5 sub-numbers for the methods
+- A 30-line region containing 3 distinct CSS selector groups (`.header`, `.nav`, `.footer`) → 3 numbers, one per selector — each affects a different part of the page
+- A helper function and the main function it serves living adjacent → 2 numbers, because they do different jobs even if related
+- A file's top-level structure: imports section, type definitions, exported functions, internal helpers → numbers per logical group, not per line
+
+**Anti-patterns — these defeat the purpose:**
+- Numbering every line of code (addresses become noise; nothing is referenceable because everything is referenceable)
+- Numbering every variable declaration
+- Numbering every closing brace
+- Putting multiple unrelated rule blocks under a single number to keep the count low — this is the failure mode the protocol exists to prevent
+
+When in doubt, prefer more granular over less. An over-numbered block is easy to consolidate later; an under-numbered block requires re-itemisation to fix.
+
+### Per-language guidance
+
+The "one job, one address" principle is universal but the unit-of-work differs by language:
+
+**Function-oriented languages** (JS, TS, PHP, Python, Ruby, Java, C#, Go): the unit is the function/method. Each significant function gets its own number. Classes are a parent number with sub-numbers per method.
+
+**CSS, SCSS, Less:** the unit is the selector block.
+- Every distinct selector group gets its own number — `.header { ... }` and `.nav { ... }` are TWO numbers, even if they sit adjacent in the file.
+- Pseudo-states (`:hover`, `:focus`, `:before`, `:after`, etc.) get their own numbers — a hover state is a different visual job than the base.
+- `@media` queries get their own numbers — they describe a separate behavioural context.
+- Comma-grouped selectors sharing one body (`.btn-primary, .btn-secondary { ... }`) are ONE number, because they describe one shared job.
+
+**HTML, XML, Vue templates:** the unit is the component/region. Number significant structural regions and reusable component definitions; do not number every element.
+
+**SQL:** the unit is the statement or CTE. Number each top-level statement and each named CTE within a query.
+
 ### Numbering Depth
 
 - Aim for 3 levels of depth (`1.2.3`) in most cases
@@ -143,6 +187,8 @@ Add `// end of N` markers for:
 - Every significant conditional or loop that spans more than a few lines (`// end of 1.1.2`)
 
 Skip end markers on very short blocks (2–3 lines) where the closing brace makes the boundary obvious.
+
+**CSS exception:** end markers are required for every numbered CSS block, even short ones. CSS closing braces don't bind to a function or class name, so navigating to the end of section `1.4.2` requires counting braces. Explicit end markers (`/* end of 1.4.2 */`) make boundaries unambiguous.
 
 ### Preserving Existing Comments
 
@@ -197,17 +243,34 @@ new_string: "# 2.1 Display checklist if git commit detected\n# Only trigger on g
 
 Removing, altering, or rewriting ANY existing character in the file — whether code or comment — is a catastrophic failure. The verification step (Step 5) will catch this, but the Edit-based approach prevents it structurally.
 
+## Step 4.5: Granularity Self-Check
+
+Before running the integrity verification, do a calibration pass over every number you added. For each numbered block, ask:
+
+> *"If a user asked 'where's the code that does X?', could I send them to this number — or would I have to direct them to a sub-part of this block?"*
+
+If you'd have to direct them to a sub-part, the block is too coarse. Sub-number it. Repeat until every numbered block cleanly does one job.
+
+**Why this step is mandatory:** the Step 5 integrity check verifies that no code was changed — it does NOT verify granularity. An agent can apply the rules mechanically and end up with one number covering 30 lines of multiple distinct concerns, and Step 5 will still pass. Granularity is a separate failure mode and must be caught here.
+
+Common cases this catches:
+- A CSS section number that turns out to span three different selector groups affecting three different page regions → split into three sub-numbers, one per selector
+- A function-level number that contains a clearly-separable helper block doing pre-processing work → either extract as a sub-number or, better, recognise it as its own job and number it accordingly
+- A `switch` block where one case has substantial business logic distinct from its siblings → that case earns its own sub-number
+
+When in doubt, prefer more granular over less. An over-numbered block is easy to consolidate later; an under-numbered block requires re-itemisation to fix.
+
 ## Step 5: Verify Integrity
 
 After rewriting each file, compare it to its backup to confirm that ONLY comment-number lines were added and NO actual code was changed.
 
-Run this check for each file (adapt comment pattern to the language). The command:
+Run this check for each file. The pattern below covers all five comment styles in the language table — `//`, `#`, `/*` (CSS/SCSS/Less), `<!--` (HTML/XML/Vue), and `--` (SQL) — so the same command works for every supported language. The command:
 1. Strips itemisation comment lines from **both** the current file and the backup (handles re-itemisation of already-itemised files)
 2. Normalises CRLF to LF on both sides (prevents false failures on Windows)
 3. Ignores blank line differences with `diff -B` (inserting comment blocks inevitably shifts blank lines)
 
 ```bash
-PATTERN="^\s*(\/\/|#)\s+[0-9]+(\.[0-9]+)*(\s|\.).*|^\s*(\/\/|#)\s+end of\s+[0-9]+"
+PATTERN="^\s*(\/\/|#|/\*|<!--|--)\s+([0-9]+(\.[0-9]+)*(\s|\.)|end of\s+[0-9]+)"
 diff -B <(grep -Ev "$PATTERN" "{filename}" | tr -d '\r') <(grep -Ev "$PATTERN" "{filename}.itemise-backup" | tr -d '\r')
 ```
 
