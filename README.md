@@ -1,4 +1,4 @@
-# Claude Context Guard
+# Context Guard
 
 **Persistent context protection for Claude Code projects.**
 
@@ -31,8 +31,8 @@ Context Guard creates a set of safeguard files that persist across sessions, plu
 ### Option 1: One-Command Install
 
 ```bash
-git clone https://github.com/atreiou/claude-context-guard.git
-cd claude-context-guard
+git clone https://github.com/atreiou/context-guard.git
+cd context-guard
 ./install.sh /path/to/your/project
 ```
 

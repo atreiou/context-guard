@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Context Guard — Installer
+# Context Guard — Installer
 # Usage: ./install.sh [target-directory]
 # If no target directory given, uses current working directory.
 
@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # 2. SECTION: Welcome banner
 echo ""
-echo "  Claude Context Guard — Installer"
+echo "  Context Guard — Installer"
 echo "  ================================="
 echo ""
 echo "  Installing into: $TARGET"

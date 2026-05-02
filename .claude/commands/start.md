@@ -39,7 +39,7 @@ If Step 0 found a valid CLAUDE.md:
 1. **Check for templates:** Look for a `templates/` folder in CCG_ROOT. If it doesn't exist, also search subdirectories: `find . -maxdepth 4 -name "templates" -type d`. If still not found, tell the user: "No templates/ folder found. Please run install.sh first or copy the templates/ folder from the Context Guard repo." Then stop.
 
 2. **Ask for project details:**
-   > "Welcome to Claude Context Guard! Let's set up your project."
+   > "Welcome to Context Guard! Let's set up your project."
    > "What is your **project name**?"
 
    Wait for their answer. Then ask:
@@ -80,7 +80,7 @@ If Step 0 found a valid CLAUDE.md:
    ## Session 1 — [today's date in dd/mm/yy] (Project Setup)
 
    **What happened:**
-   - Project initialised with Claude Context Guard
+   - Project initialised with Context Guard
    - Safeguard files created from templates
 
    **Tasks completed:** Context Guard setup

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Context Guard — Pre-Compaction Backup Hook
+# Context Guard — Pre-Compaction Backup Hook
 # Fires before context compaction. Backs up safeguard files so nothing is lost.
 
 BACKUP_DIR="$CLAUDE_PROJECT_DIR/compaction-backups/$(date +%Y-%m-%d_%H%M%S)"
