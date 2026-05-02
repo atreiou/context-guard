@@ -91,6 +91,34 @@ Safeguard files may not be in the current working directory — they could be in
 - Check for orphaned files not in any index
 - Run any project-specific grep checks from CLAUDE.md
 
+## 9.5 Sidecar Index Freshness
+
+For every `<source>.index.md` sidecar in the project (find with `find . -name "*.index.md" -not -path "*/node_modules/*" -not -path "*/.git/*"`):
+
+1. Identify the matching source file (strip the `.index.md` suffix).
+2. Get the source file's modification time: `git log -1 --format=%ci -- <source>` (preferred — survives clones) or filesystem mtime as a fallback.
+3. For each row in the sidecar table, parse the `Last edit` date (dd/mm/yy).
+4. **If the source file has been modified more recently than a row's `Last edit`**, add that row to a `📝 Possibly stale index entries` block in the report. Show: source file, sidecar path, row number, current description, last-edit date, source-file-modified date.
+
+**Do NOT auto-rewrite.** This step is a suggestion only. Surface the row to the user and let them decide:
+
+> 📝 **Possibly stale index entries** — these descriptions may be hand-crafted and still accurate. Only update them if the description is genuinely out of date with the code. The `Last edit` date alone is not proof of staleness — it's a hint that the row deserves a glance.
+
+If `Last edit` parsing fails on a row (corrupt date, missing column, etc.), report it as **WARNING — sidecar row needs manual repair** and continue. Do not stop the audit.
+
+## 9.6 Sidecar Parity
+
+For every `<source>.index.md` sidecar found in 9.5, verify code ↔ sidecar parity:
+
+1. Extract every section number from the source file's start markers (regex: `^\s*(\/\/|#|/\*|<!--|--)\s+([0-9]+(\.[0-9]+)*)`).
+2. Extract every `#` value from column 1 of the sidecar table.
+3. Compare:
+   - **Sidecar row with no matching source marker** → `WARNING — orphan sidecar row [N.M.K] in <sidecar>`
+   - **Source marker with no matching sidecar row** → `WARNING — missing sidecar row for [N.M.K] in <sidecar>`
+4. Both pass → `INFO: <sidecar> in parity with <source>`.
+
+This catches the most likely failure mode: a coding agent edited the source file (added or removed a numbered section) without updating the sidecar.
+
 ## Output Format
 
 ```

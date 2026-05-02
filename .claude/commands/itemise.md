@@ -7,6 +7,10 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 
 Applies hierarchical section numbering to code files so every block is referenceable by address (e.g. "check section 2.3.1"). Backs up files first, applies numbering, verifies nothing changed except the added comment numbers, then removes backups.
 
+After applying section markers, `/itemise` also generates a `<source>.index.md` sidecar — a compact table mapping each marker number to a one-line description of what that block does. The source file and its sidecar are conceptually a **single artefact split into two formats**: the source carries the code with numbered markers, the sidecar carries the human-readable descriptions and last-edit dates. Editing one without updating the other breaks the contract — see the `## Index Maintenance` section in `CLAUDE.md` for the full rule.
+
+All dates written by this skill use **dd/mm/yy** (UK format).
+
 ## Step 0: Check the Toggle
 
 Locate `CLAUDE.md` — check the current directory first, then search subdirectories (`find . -maxdepth 4 -name "CLAUDE.md" -type f`) if not found. Use the one that contains `TASK_REGISTRY.md` (confirms it's a Context Guard CLAUDE.md). Look for a line that starts with `ITEMISATION:`.
@@ -260,6 +264,63 @@ Common cases this catches:
 
 When in doubt, prefer more granular over less. An over-numbered block is easy to consolidate later; an under-numbered block requires re-itemisation to fix.
 
+## Step 4.6: Generate or Update the Sidecar Index
+
+For every source file you just annotated, generate or update a sidecar index file at `<source_filename>.index.md` placed next to the source file.
+
+### Sidecar format
+
+```
+# <source_filename> — Context Guard Sidecar Index
+This file is interwoven with <source_filename>. Edit one, edit the other (see CLAUDE.md → Index Maintenance).
+
+| #     | Description                                                  | Last edit |
+|-------|--------------------------------------------------------------|-----------|
+| 1     | Module imports and constants                                 | dd/mm/yy  |
+| 2.1   | parseInput() — validates form data and trims whitespace      | dd/mm/yy  |
+| 2.1.1 | rejects empty username                                       | dd/mm/yy  |
+```
+
+- The header note is **fixed text** (no date in the header — regeneration is rare and timestamps live per row).
+- Numbers in column 1 must match the section markers in the source file 1:1, in source order.
+- Dates are **dd/mm/yy** (UK format). Use today's date for any row you generate or update.
+- Descriptions follow the **Description Ruleset** documented in `CLAUDE.md`. The short version: active voice, present tense, states the *job* (not the implementation), function-name prefix where applicable (`parseInput() — …`), ~80 char soft limit / 120 hard, one line, no trailing punctuation, British English.
+
+### When generating from scratch (sidecar does not exist)
+
+For each numbered section in the source file:
+
+1. Read the section's body.
+2. **If the section is fewer than 50 lines**, write a one-line description following the ruleset.
+3. **If the section is 50 lines or longer**, leave the description as `_(blank — fill on first edit)_`. This is a **deliberate token-saving choice**: long sections need careful summarisation, and an inaccurate auto-generated description is worse than no description (it misleads agents and corrupts their model of the codebase). Calibration scaffolding is not authoritative — let the next coding agent fill it in when they touch the section for the first time.
+4. Set `Last edit` to today's date (dd/mm/yy).
+
+### When refining (sidecar already exists)
+
+1. Read the existing sidecar.
+2. **Preserve every existing description verbatim** — do not rewrite even if it doesn't match the auto-generated style. Hand-written descriptions are sacred and exist for a reason.
+3. For numbered sections that exist in the source but have **no entry** in the sidecar: add a new row, applying the generation rules above (auto-fill for <50 lines, blank for ≥50 lines).
+4. For sidecar entries whose numbers **no longer exist** in the source file: delete the row entirely (no tombstones — git history holds the record).
+5. Do NOT touch `Last edit` dates on rows you didn't add or change.
+
+### Fail loudly on disagreement
+
+If at any point during sidecar generation you cannot reconcile a numbered marker in the source with a sidecar row (for example, the marker pattern doesn't parse, or a row has a number you can't find in the source), stop and report the mismatch to the user. Do not write a partial sidecar.
+
+## Step 4.7: Sidecar Parity Check
+
+Before declaring the file complete, verify code ↔ sidecar parity:
+
+1. Extract every section number from the source file's start markers (the regex from Step 5 catches them all).
+2. Extract every `#` value from column 1 of the sidecar table.
+3. Compare the two sets:
+   - Every source-file number MUST have a sidecar row.
+   - Every sidecar row's number MUST exist in the source file.
+4. **Pass:** the two sets are identical.
+5. **Fail:** report which numbers are unmatched and on which side. Do not proceed to Step 5 until parity is restored.
+
+The Step 5 integrity check verifies the source file wasn't corrupted; this step verifies the sidecar matches the source. Both are required.
+
 ## Step 5: Verify Integrity
 
 After rewriting each file, compare it to its backup to confirm that ONLY comment-number lines were added and NO actual code was changed.
@@ -301,19 +362,24 @@ If any file failed:
 ## Itemisation Complete
 
 ### Updated Files
-- [filename] — N sections, M functions numbered
+- [filename] — N sections, M functions numbered. Sidecar: [filename].index.md (X rows, Y blank pending first edit)
 
 ### Failed / Restored
 - [filename] — [reason, diff output]
 
 ### Notes
-- Run /itemise again after significant code changes to renumber
-- Disable with ITEMISATION: disabled in CLAUDE.md
+- Run /itemise again after significant code changes to renumber and refresh the sidecar.
+- Disable with ITEMISATION: disabled in CLAUDE.md.
+- Coding agents must keep each <source>.index.md in sync with the source file — see Index Maintenance in CLAUDE.md.
 
 ### Usage Tips
-- For large files, grep for `# N.M` to find a section's start line and `# end of N.M`
-  for its end line, then use Read with offset/limit to load just that section.
+- The fastest way to find code: read the small <source>.index.md sidecar, pick the
+  matching number, then grep the source for that number's start/end markers and Read
+  only those lines. Far cheaper than loading the whole file.
+- For itemised files without a sidecar (legacy), grep for `# N.M` to find a section's
+  start line and `# end of N.M` for its end line, then use Read with offset/limit.
 - When modifying a section, grep the file for `[calls: N.M]` references pointing to it.
   If other sections depend on the one you're changing, flag it to the user as an advisory.
-- See "Reading Specific Sections" and "Impact Advisories" in CLAUDE.md for full details.
+- See "Reading Specific Sections", "Impact Advisories", and "Index Maintenance" in CLAUDE.md
+  for full details.
 ```

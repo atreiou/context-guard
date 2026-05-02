@@ -167,6 +167,33 @@ add_action('wp_enqueue_scripts', function() {
 
 **Safety:** `/itemise` creates `{filename}.itemise-backup` copies before touching anything, verifies integrity after (strips added comment-numbers and diffs against the backup to confirm no code changed), and restores from backup on any failure.
 
+### Sidecar Indexing
+
+Every itemised source file gets a paired `<source_filename>.index.md` sidecar — a compact table mapping each section number to a one-line description of what that block does:
+
+```
+# auth.js — Context Guard Sidecar Index
+This file is interwoven with auth.js. Edit one, edit the other (see CLAUDE.md → Index Maintenance).
+
+| #     | Description                                                  | Last edit |
+|-------|--------------------------------------------------------------|-----------|
+| 1     | Module imports and constants                                 | 02/05/26  |
+| 2.1   | parseInput() — validates form data and trims whitespace      | 02/05/26  |
+| 2.1.1 | rejects empty username                                       | 02/05/26  |
+| 2.2   | hashPassword() — argon2id with project-default cost params   | 02/05/26  |
+```
+
+**Why this exists:** a number on its own (e.g. `2.1`) is a coordinate without a label. With the sidecar, an agent answering "where is the code that does X?" reads the small sidecar (cheap), picks the matching number, then greps the source for that number's start/end markers and reads only those bytes. Token usage scopes to exactly the relevant code instead of the whole file.
+
+**The contract — non-optional:** the source file and the sidecar are a single artefact split into two formats for token economy. Editing the source without updating the sidecar (or vice versa) breaks the contract. The full rule lives in your project's `CLAUDE.md` under `## Index Maintenance`.
+
+**Description quality on legacy codebases.** When `/itemise` runs on a file for the first time, it auto-generates descriptions only for sections under 50 lines. Anything 50 lines or longer is left as `_(blank — fill on first edit)_` — the next coding agent that touches the section fills it in. **This is a deliberate token-saving choice.** Auto-generated descriptions on long sections tend to flatten branching logic and miss edge cases; an inaccurate description costs more tokens (agents spend tokens fixing their own confusion) than no description. On large existing codebases, descriptions accumulate as real coding work happens — calibration scaffolding first, accuracy with each first-edit pass.
+
+**Date format.** Sidecar `Last edit` dates use dd/mm/yy (UK format). All Context Guard skills write dates in this format going forward.
+
+**Stale detection via `/audit`.** When a source file has been modified more recently than a sidecar row's `Last edit`, `/audit` surfaces the row under a `📝 Possibly stale index entries` block — as a *suggestion*, not an auto-fix. Hand-written descriptions are often still accurate even when the date is old; the human (or the next editing agent) owns the rewrite decision.
+
+
 ### Safeguard File Pagination
 
 As projects grow, safeguard files accumulate history that eats into the context window on every `/start`. Context Guard handles this automatically — when any safeguard file exceeds 300 lines, `/save` and `/end` archive older content into numbered page files:

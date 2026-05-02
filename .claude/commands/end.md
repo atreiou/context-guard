@@ -9,6 +9,8 @@ The user wants to wrap up this session cleanly. Your job is to create a save poi
 
 **CRITICAL: /end is a SAVE-ONLY operation.** Do not start new work, execute plans, or make code changes beyond updating safeguard files. If a plan was approved this session but not yet executed, log it as ⏳ pending in TASK_REGISTRY.md and note it in the "Next session" field of the report. The next session will pick it up via /start.
 
+**Date convention:** all dates written by this skill use **dd/mm/yy** (UK format). Do not retroactively rewrite older dates already in safeguard files; only new entries follow this rule.
+
 ## Step 0: Locate CCG Root
 
 Safeguard files may not be in the current working directory — they could be in a subdirectory. Find them first.
@@ -52,7 +54,7 @@ Check and update ALL of these:
   # This file holds ONLY current in-flight state — not history. History lives in SESSION_LOG.md.
 
   **Session:** S[N+1]
-  **Last updated:** YYYY-MM-DD HH:MM
+  **Last updated:** dd/mm/yy HH:MM
   **Clean save:** true
 
   ## In-flight
@@ -94,7 +96,7 @@ Check and update ALL of these:
 - Log any non-obvious workaround, platform quirk, version-specific gotcha, or ">15 minutes debugging this" discovery from this session.
 - Format:
   ```
-  ## LB-NNN — [Short title] (Session N, YYYY-MM-DD)
+  ## LB-NNN — [Short title] (Session N, dd/mm/yy)
   **Context:** Where this surfaces (platform, plugin, version)
   **Gotcha:** What fails and how
   **Workaround:** What actually works

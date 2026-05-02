@@ -139,6 +139,41 @@ When syncing, migrating, relocating, or cleaning up files in any `.claude/` dire
 - **`.claude/` is a shared namespace.** Consumer projects can have their own hooks, skills, commands, and settings sitting right next to CCG's. They are not CCG's to remove.
 - This applies to every agent action — not just CCG sync. The same discipline applies to any cleanup or refactor pass that touches another project's files.
 
+
+## Description Ruleset
+
+Sidecar `.index.md` descriptions (one row per numbered section in a code file) follow this ruleset:
+
+- Active voice, present tense
+- States the **job**, not the implementation. Good: `validates email format`. Bad: `uses regex on email`.
+- Function-name prefix where applicable: `parseInput() — validates form data and trims whitespace`
+- Soft limit ~80 characters, hard limit 120
+- One line per entry, no trailing punctuation
+- British English spelling
+
+The ruleset is universal across every code file in every project. Hand-written descriptions that follow these rules are sacred — agents MUST NOT rewrite them merely because they don't match the auto-generated style.
+
+## Index Maintenance
+
+A code file and its `.index.md` sidecar are a **single artefact split into two formats** — the source file holds the code with numbered markers, the sidecar holds the human-readable descriptions and last-edit dates. Either format on its own is incomplete.
+
+**It is not possible to edit one without editing the other.** Editing a numbered section without updating its sidecar entry is a project failure. Adding a new numbered section without adding its sidecar entry is a project failure. Deleting a numbered section without deleting its sidecar entry is a project failure.
+
+After editing a numbered section in the source file, you MUST:
+
+1. Update that entry's `Last edit` date in the sidecar to today (dd/mm/yy)
+2. If the section's job changed, rewrite the description following the rules in `## Description Ruleset`
+3. If you added new numbered sections, add their entries
+4. If you deleted numbered sections, delete their entries
+
+**Hand-written descriptions are sacred.** Do not rewrite a description merely because it doesn't match an auto-generated style. Only rewrite if the description is genuinely inaccurate.
+
+This rule is universal across every project that uses Context Guard. The only exception is if the host project's own `CLAUDE.md` explicitly opts out (e.g. `## Index Maintenance: disabled — see project-specific reasons`).
+
+## Date Convention
+
+All dates written by Context Guard skills (`/start`, `/save`, `/end`, `/audit`, `/itemise`) use **dd/mm/yy** (UK format) going forward. Existing dates in safeguard files written before this convention are left as-is — do not retroactively rewrite them. The dd/mm/yy convention applies only to new entries.
+
 ## Itemisation Protocol
 
 ITEMISATION: enabled

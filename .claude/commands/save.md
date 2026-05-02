@@ -7,6 +7,8 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 
 The user wants to save current progress without ending the session. This is a lightweight checkpoint — no plan archiving, no session wrap-up. Update safeguard files, commit, push, and confirm.
 
+**Date convention:** all dates written by this skill use **dd/mm/yy** (UK format). Do not retroactively rewrite older dates already in safeguard files; only new entries follow this rule.
+
 ## Step 0: Locate CCG Root
 
 Safeguard files may not be in the current working directory — they could be in a subdirectory. Find them first.
@@ -46,7 +48,7 @@ Check and update ALL of these:
 - Overwrite this file with the current in-flight state. Fields:
   ```
   **Session:** S[N]
-  **Last updated:** YYYY-MM-DD HH:MM
+  **Last updated:** dd/mm/yy HH:MM
   **Clean save:** false
 
   ## In-flight
@@ -97,7 +99,7 @@ Check and update ALL of these:
 - Do NOT log ordinary coding knowledge; only things a fresh agent would re-discover the hard way.
 - Entry format:
   ```
-  ## LB-NNN — [Short title] (Session N, YYYY-MM-DD)
+  ## LB-NNN — [Short title] (Session N, dd/mm/yy)
   **Context:** Where this surfaces (platform, plugin, version)
   **Gotcha:** What fails and how
   **Workaround:** What actually works

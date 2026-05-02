@@ -7,6 +7,8 @@ allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 
 You are starting or resuming a session. Follow these steps EXACTLY:
 
+**Date convention:** all dates written by this skill use **dd/mm/yy** (UK format). Do not retroactively rewrite older dates already in safeguard files; only new entries follow this rule.
+
 ## Step 0: Locate CCG Root
 
 Context Guard safeguard files may not be in the current working directory — they could be in a subdirectory (e.g. the working directory is a parent folder that contains the actual project). Find them before doing anything else.
@@ -57,7 +59,7 @@ If Step 0 found a valid CLAUDE.md:
 4. **Populate placeholders in CLAUDE.md:**
    - Replace `{PROJECT_NAME}` with the user's project name
    - Replace `{PROJECT_DESCRIPTION}` with their description (or "TODO" if skipped)
-   - Replace `{DATE}` with today's date
+   - Replace `{DATE}` with today's date in dd/mm/yy format
 
 4.5. **Configure version control:**
 
@@ -73,9 +75,9 @@ If Step 0 found a valid CLAUDE.md:
    - Option 3: set Mode to `none`
 
 5. **Initialise SESSION_LOG.md:**
-   - Add a Session 1 entry:
+   - Add a Session 1 entry (date in dd/mm/yy):
    ```
-   ## Session 1 — [today's date] (Project Setup)
+   ## Session 1 — [today's date in dd/mm/yy] (Project Setup)
 
    **What happened:**
    - Project initialised with Claude Context Guard
