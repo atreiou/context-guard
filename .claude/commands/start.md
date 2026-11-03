@@ -129,6 +129,7 @@ If Step 0 found a valid CLAUDE.md:
 The ledgers are rotated: each main file holds ONLY the last 5 sessions' content (plus, for DECISIONS and LEARNED_BEHAVIOUR, a one-line index of everything archived). They are small by design, so read each in full, in this order:
 
 0. **`RESUME_STATE.md`, READ THIS FIRST.** This file holds only the in-flight state from the last /save. If `Clean save: false`, the previous session was interrupted mid-task, and the In-flight and Next step sections are your handoff note. Surface this in the Step 4 summary under a `🔄 Resume from last session` heading so the user knows you picked it up. If `Clean save: true`, the previous session ended cleanly and RESUME_STATE is empty, so the next-session intent lives in SESSION_LOG's newest "Next step".
+0.5. **`CONTEXT_GUARD_UPDATE.md`, if it exists in CCG_ROOT.** A note left when Context Guard itself was updated in this project: what changed, which files, and what to do next. Read it in full, surface it in the Step 4 summary under `🛠 Context Guard was updated`, and do what it asks before other work. It says itself when it may be deleted.
 1. `CLAUDE.md`: project rules and architecture. Parse the `## Custom Context Files` section for any project-specific files to load.
 2. `SESSION_LOG.md`: the last 5 sessions
 3. `TASK_REGISTRY.md`: the LIVE task list. Read ALL of it, every row: it is the one list of tasks not yet finished, and nothing on it is ever old enough to skip. Do NOT read `TASK_REGISTRY_COMPLETED.md` or any task archive page at session start.
@@ -242,6 +243,9 @@ Present a clear summary. Only include sections that have content, and omit empty
 
 ### 🔄 Resume from last session (only if RESUME_STATE.md Clean save: false)
 [Prepend the In-flight and Next step content verbatim from RESUME_STATE.md]
+
+### 🛠 Context Guard was updated (only if CONTEXT_GUARD_UPDATE.md exists)
+[What changed and what it asks, in a few lines]
 
 ### Last Session ([N-1])
 [What was done]

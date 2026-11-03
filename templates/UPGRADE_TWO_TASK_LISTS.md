@@ -33,4 +33,4 @@ Use this once per existing project, and only after the user has said to build th
 
 9. **Show the user** the counts (open, done, superseded, dropped), the checker's line, and every row you could not decide, by AskUserQuestion, before committing. Their answers are final.
 
-10. **Remove the update note** from the top of RESUME_STATE.md or TASK_REGISTRY.md, log the move in SESSION_LOG.md, and commit the two lists, the archive page and CLAUDE.md by explicit path.
+10. **Log the move in SESSION_LOG.md**, delete `CONTEXT_GUARD_UPDATE.md` if it asked for nothing else, and commit the two lists, the archive page and CLAUDE.md by explicit path.
