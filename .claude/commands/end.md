@@ -133,6 +133,8 @@ Check and update ALL of these:
 
 **Always run this step.** You have full session context right now, so use it to make smart archival decisions. Archive anything older than 5 sessions or fully actioned, regardless of file size. Don't wait for files to get large; keep them lean proactively.
 
+**Every new archive page starts with a header line naming what it covers**, so a later agent can find the right page from its first line instead of guessing search words: the file, the page number, and the sessions it covers, plus the ID range for decisions, learned behaviours and the done list. For example `# COMMENTS: Archive Page 6 (Sessions 20 to 24)` or `# DECISIONS: Archive Page 4 (D-049 to D-061, Sessions 20 to 24)`. Archived comments keep their session headings and dates.
+
 ### SESSION_LOG.md
 1. Count `## Session` headers. Keep the **last 5 sessions** in the main file.
 2. Everything above the 5th-from-last `## Session` header → move to archive.

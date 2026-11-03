@@ -11,6 +11,47 @@ You are starting or resuming a session. Follow these steps EXACTLY:
 
 **Token discipline:** `/start` is a read-and-summarise operation, and every token it spends is a token the session's real work does not get. Read ONLY the files listed in Step 1. Do **NOT** read archive pages or plan files at session start. RESUME_STATE points at whatever the first task needs, and you open that material when you begin the task, not before.
 
+## What Context Guard Is, and Where Everything Lives
+
+Read this section every time, before Step 0. It is how you know what you are working with.
+
+**Context Guard is this project's memory between sessions.** Your own context ends when this session ends, and the next agent starts with none of it. So everything a later agent needs to carry on (what was done, what is left, what the user said and decided, and why) is written to files in one Context Guard folder, CCG_ROOT (normally `context-guard/` in the project root). `/start` loads what is current. **Nothing is ever deleted:** older material is moved, verbatim, into `archive/`, where it stays findable. So when you need context you do not have (why something was built a certain way, what the user said about it, whether it was already tried), it is almost certainly in these files. Look there before you guess, and before you ask the user something they have already told a previous session.
+
+**The live files**, in CCG_ROOT, read by `/start`:
+
+| File | What it holds |
+|------|---------------|
+| `RESUME_STATE.md` | After `/save`: what was in flight and the full handover. After `/end`: the next action, and a pointer to the handover in SESSION_LOG.md |
+| `SESSION_LOG.md` | What happened in each of the last 5 sessions, each entry ending with its handover |
+| `TO_DO_LIST.md` | Everything not yet done: tasks, and decisions waiting on the user. Never rotated |
+| `DONE_LIST.md` | Every finished task, newest first: its outcome, how it was tested, and its proof (commit, files, the decision behind it, often the user's own words). Not read at `/start`; search it |
+| `DECISIONS.md` | The last 5 sessions' decisions in full, plus a one-line index of every older one and the archive page that holds it |
+| `LEARNED_BEHAVIOUR.md` | The last 5 sessions' gotchas and workarounds, plus an index of older ones |
+| `COMMENTS.md` | The user's own words, verbatim, while they are still being acted on |
+| `FEATURE_LIST.json` | Which features the user has verified by hand |
+| `CONTEXT_GUARD_UPDATE.md` | Only there after Context Guard itself was updated in this project: read it first |
+
+The project's `CLAUDE.md`, in the project root, holds the project's own rules and is read automatically.
+
+**The folders**, inside CCG_ROOT:
+
+| Folder | What it holds |
+|--------|---------------|
+| `archive/` | Everything older, verbatim: `SESSION_LOG_pageN.md` (older sessions), `COMMENTS_pageN.md` (the user's words once acted on), `DECISIONS_pageN.md` and `LEARNED_BEHAVIOUR_pageN.md` (the full text behind the indexes), `DONE_LIST_pageN.md` (finished tasks beyond the newest 500), `TASK_REGISTRY_pageN.md` (the old single task list, before the two lists). Each page's first line names the sessions or IDs it covers |
+| `plans/` | Every approved plan, named `S{session}-{seq}_{description}.md` |
+| `audits/` | Saved `/audit` reports |
+| `backups/` | Copies taken automatically before context compaction |
+| `templates/` | The templates the project was set up from, and `UPGRADE.md` |
+
+**Finding older context without guessing.** A word search only finds what you guessed to look for, so start from an exact handle:
+
+1. **A task ID** (S12-004): search the done list, the session log and `archive/` for it. Its done list row names the commit, the files and the decision behind it, and the session that did it.
+2. **A decision or learned-behaviour ID** (D-042, LB-007): its index line names the archive page that holds the full text.
+3. **A session number**: the session log entry, or the `archive/SESSION_LOG_pageN.md` whose first line covers that session, says what happened; the `archive/COMMENTS_pageN.md` covering the same session holds what the user said.
+4. **A file path or commit hash**: search the done list and the session logs for it, and run `git log -- <path>`; commit messages carry the task tags.
+
+Only when there is no exact handle, search by words, and try several (the user's likely wording, the feature's name, the file name) before deciding something is not recorded. If it truly is not there, ask the user.
+
 ## Step 0: Locate CCG Root
 
 CCG_ROOT is the folder that holds the Context Guard files. In the current layout it is the `context-guard/` folder in the project root, with `archive/`, `plans/`, `audits/`, `backups/` and `templates/` inside it. The project's `CLAUDE.md` is the one Context Guard file that stays in the project root, because that is where the agent reads it automatically. Find CCG_ROOT in this order and stop at the first match:

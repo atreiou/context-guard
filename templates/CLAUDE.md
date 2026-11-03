@@ -27,6 +27,19 @@ context-guard/
 
 Live files sit in `context-guard/`, archived ones in `context-guard/archive/`, and anything Context Guard keeps as separate files gets a folder of its own inside `context-guard/`. Never create a Context Guard file in the project root, and never put an archive page beside the live files. All paths below are inside `context-guard/` unless they say otherwise.
 
+## WHAT CONTEXT GUARD IS, AND FINDING OLDER CONTEXT
+
+Context Guard is this project's memory between sessions. Each agent's own context ends with its session, so everything a later agent needs (what was done, what is left, what the user said and decided, and why) is written to the files above. `/start` reads what is current, and opens with a full map of every file and folder. **Nothing is ever deleted:** older material moves, verbatim, into `archive/` (older sessions, the user's comments once acted on, the full text of older decisions and learned behaviours, older finished tasks), and finished tasks sit in `DONE_LIST.md` with their proof.
+
+**When you need context you do not have, at any point in the session, look in these files before you guess, and before you ask the user something they have already said.** A word search only finds what you guessed to look for, so start from an exact handle:
+
+1. **A task ID** (S12-004): search `DONE_LIST.md`, `SESSION_LOG.md` and `archive/` for it. Its done list row names the commit, the files, the decision and the session.
+2. **A decision or learned-behaviour ID** (D-042, LB-007): its index line names the archive page that holds the full text.
+3. **A session number**: the session log entry, or the `archive/SESSION_LOG_pageN.md` whose first line covers that session, says what happened; the `archive/COMMENTS_pageN.md` covering that session holds what the user said.
+4. **A file path or commit hash**: search the done list and the session logs for it, and run `git log -- <path>`; commit messages carry the task tags.
+
+Only with no exact handle, search by words, trying several (the user's likely wording, the feature's name, the file name). If it truly is not recorded, ask the user.
+
 ## CRITICAL: READ THESE FILES FIRST BEFORE ANY WORK
 
 0. **`RESUME_STATE.md`**: In-flight state from the last /save. Read FIRST. If `Clean save: false`, resume from the In-flight section before anything else.
@@ -113,7 +126,7 @@ Write it for a reader with no memory of this session. Name things exactly (a tas
 
 ## PRESERVE USER COMMENTS: MANDATORY
 
-Every comment the user makes in conversation MUST reach `COMMENTS.md` verbatim, with timestamp and session ID: directions, feedback, decisions, preferences, corrections, and anything else they say. `/save` and `/end` write them from the conversation. Failure to preserve comments is as dangerous to the project as deleting core files. Comments can be archived once actioned (turned into decisions, tasks, or file changes).
+Every comment the user makes in conversation MUST reach `COMMENTS.md` verbatim, with timestamp and session ID: directions, feedback, decisions, preferences, corrections, and anything else they say. `/save` and `/end` write them from the conversation. Failure to preserve comments is as dangerous to the project as deleting core files. Once acted on (turned into decisions, tasks, or file changes), comments move at `/end`, verbatim, into `archive/COMMENTS_pageN.md`, where they stay findable by session; nothing is deleted.
 
 ## USER AUDITS YOUR WORK
 

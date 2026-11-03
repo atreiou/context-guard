@@ -4,7 +4,8 @@
 #
 # PURPOSE: Safety net against context loss. Comments stay here until they've been fully actioned
 # (turned into decisions in DECISIONS.md, tasks in TO_DO_LIST.md, or file changes).
-# Once actioned, comments can be removed. This file ensures a fresh session can
+# Once actioned, /end moves them, verbatim, to archive/COMMENTS_pageN.md. Nothing is deleted: an agent that
+# needs the user's earlier words looks there, by session number. This file ensures a fresh session can
 # understand the user's actual intent, not just what was done.
 #
 # Format: Timestamp | Session | Verbatim comment
