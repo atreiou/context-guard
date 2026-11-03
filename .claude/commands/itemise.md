@@ -13,24 +13,40 @@ All dates written by this skill use **dd/mm/yy** (UK format).
 
 ## Step 0: Check the Toggle
 
-Locate `CLAUDE.md`, checking the current directory first, then search subdirectories (`find . -maxdepth 4 -name "CLAUDE.md" -type f`) if not found. Use the one that contains `TASK_REGISTRY.md` (confirms it's a Context Guard CLAUDE.md). Look for a line that starts with `ITEMISATION:`.
+Find the project's `CLAUDE.md` in the project root (use `/start` Step 0 to find the project when the working directory is a parent folder). Look for a line that starts with `ITEMISATION:`.
 
 - If it says `ITEMISATION: disabled`, stop here. Inform the user: "Itemisation Protocol is disabled. Change `ITEMISATION: disabled` to `ITEMISATION: enabled` in CLAUDE.md to activate it."
 - If it says `ITEMISATION: enabled` or the setting is absent, proceed.
 
 ## Step 1: Confirm Scope
 
-Ask the user:
-> "Which files or directories should I itemise? I'll process all code files by default (`.py`, `.js`, `.ts`, `.tsx`, `.jsx`, `.php`, `.java`, `.cs`, `.go`, `.rb`, `.sh`), excluding `node_modules/`, `vendor/`, `dist/`, `build/`, `.git/`. Or name specific files or folders."
+**The default scope is every hand-written file that can carry a comment:** application code, tests, scripts, SQL, stylesheets (CSS, SCSS, Less), markup and templates (HTML, XML, Vue), shell, and configuration whose format allows comments (YAML, TOML, INI).
 
-Wait for their answer. Then list the exact files you will process and ask them to confirm before touching anything.
+**Never put markers in these**, whatever the scope says:
+- Dependencies and vendored copies (`node_modules/`, `vendor/`, third-party libraries copied in)
+- Generated or built output (`dist/`, `build/`, minified `*.min.*` files, compiled files, lockfiles, anything a tool writes)
+- Formats that do not allow comments, such as JSON: a marker would make the file invalid. Describe their structure in documentation instead, if useful.
+- **Files whose exact bytes are checked somewhere else**: a database migration that has already been applied and has a recorded checksum, a signed or hashed file. Changing even a comment breaks the check. Leave them exactly as they are; a new migration gets its markers before it is first applied.
+- Original source documents, private data, backups, and Context Guard's own files
+
+**Remembered scope.** If CLAUDE.md has an `ITEMISATION SCOPE:` line, the user has already approved a scope for this project: use it without asking again, and ask only when this request names a genuinely different scope. Otherwise ask:
+> "Which files or directories should I itemise? By default I'll do every hand-written file that can carry a comment (code, tests, scripts, SQL, stylesheets, templates, comment-capable config), excluding dependencies, generated files and anything whose bytes are checked elsewhere. Or name specific files or folders."
+
+Wait for their answer, then list the exact files you will process and ask them to confirm before touching anything. Record the approved scope on an `ITEMISATION SCOPE:` line under the Itemisation Protocol section of CLAUDE.md so the next run does not ask again.
+
+**Check who is working on each file.** Run `git status --short` on the listed files. A file with uncommitted changes you did not make is being edited by someone else (another agent, or the user): leave it out and name it in the summary. Marking it would mix your markers into their unfinished change, and the Step 5 integrity check cannot tell their edits from a corruption.
 
 ## Step 2: Check for Existing Itemisation
 
-Before creating backups, scan each file for lines matching the pattern `// N.` or `# N.` (itemisation numbers). If any file already has itemisation numbers:
+Before creating backups, scan each file for itemisation numbers (the Step 5 pattern finds them in every comment style).
 
-- **If the user invoked `/itemise force`:** skip this warning entirely. Proceed with re-itemisation without prompting.
-- **Otherwise:** warn the user: "This file appears to already be itemised. Re-running will renumber everything from scratch." Ask if they want to continue or skip that file.
+**A file that is already itemised is refined, never renumbered, by default.** Its numbers are addresses that people, sidecars, task rows and `[calls: N.M]` references already point at, and renumbering breaks every one of them. So, for an itemised file:
+- Keep every existing number and every existing sidecar description exactly as they are.
+- Add numbers only where they are missing: new code, or a block that the Step 4.5 granularity check finds too coarse (it gets sub-numbers under its existing number).
+- Add missing end markers, and bring the sidecar into parity (Steps 4.6 and 4.7).
+- A new block that falls between two existing siblings takes the next free number at that level; never shift the numbers that are already there.
+
+**Renumbering from scratch happens only when the user asks for it**, with `/itemise renumber` (or the older `/itemise force`). Warn them first that every existing address in the file will change.
 
 ## Step 3: Create Backups
 
@@ -190,7 +206,7 @@ Add `// end of N` markers for:
 - Every named function/method (`// end of 1.1`)
 - Every significant conditional or loop that spans more than a few lines (`// end of 1.1.2`)
 
-Skip end markers on very short blocks (2–3 lines) where the closing brace makes the boundary obvious.
+Skip end markers on very short blocks (2 or 3 lines) where the closing brace makes the boundary obvious.
 
 **CSS exception:** end markers are required for every numbered CSS block, even short ones. CSS closing braces don't bind to a function or class name, so navigating to the end of section `1.4.2` requires counting braces. Explicit end markers (`/* end of 1.4.2 */`) make boundaries unambiguous.
 
@@ -368,7 +384,8 @@ If any file failed:
 - [filename]: [reason, diff output]
 
 ### Notes
-- Run /itemise again after significant code changes to renumber and refresh the sidecar.
+- Run /itemise again after significant code changes: it keeps the existing numbers, numbers the new code and refreshes the sidecar. /itemise renumber starts the numbering over, and changes every address.
+- Files left out because someone else was mid-edit: [list, or none]
 - Disable with ITEMISATION: disabled in CLAUDE.md.
 - Coding agents must keep each <source>.index.md in sync with the source file. See Index Maintenance in CLAUDE.md.
 

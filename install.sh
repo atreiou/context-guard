@@ -128,10 +128,11 @@ fi
 # end of 4.3
 
 # 4.4 Copy templates (includes LEARNED_BEHAVIOUR.md, RESUME_STATE.md and both task lists)
-# Copy templates
+# Every Context Guard file lives in one context-guard/ folder in the project root, so the
+# templates go there too; /start builds the rest of the folder on first run.
 echo "  Copying templates..."
-mkdir -p "$TARGET/templates"
-cp "$SCRIPT_DIR/templates/"* "$TARGET/templates/"
+mkdir -p "$TARGET/context-guard/templates"
+cp "$SCRIPT_DIR/templates/"* "$TARGET/context-guard/templates/"
 # end of 4.4
 
 # 4.5 Copy commands and hooks to parent directory (if selected)
@@ -168,8 +169,8 @@ fi
 echo ""
 echo "  ✓ Context Guard installed successfully."
 echo ""
-echo "  Next step: Open Claude Code in your project and type /start"
-echo "  On first run, /start will set up your safeguard files and offer to"
-echo "  itemise your existing codebase."
+echo "  Next step: Open your coding agent (Claude Code) in your project and type /start"
+echo "  On first run, /start will create the context-guard/ folder with your"
+echo "  Context Guard files, and offer to itemise your existing codebase."
 echo ""
 # end of 5

@@ -1,28 +1,25 @@
 ---
-description: "Type /save to checkpoint progress mid-session. Updates all safeguard files without ending the session. Protects against context loss during long sessions."
+description: "Type /save to make a save point mid-session. Writes all the Context Guard files without ending the session, commits and pushes. Context Guard files are written only by /save and /end (the two task lists are kept current as work happens)."
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
-# Context Guard: Mid-Session Checkpoint (/save)
+# Context Guard: Mid-Session Save (/save)
 
-The user wants to save current progress without ending the session. This is a lightweight checkpoint: no plan archiving, no session wrap-up, no full ledger rotation. Update safeguard files, commit, push, and confirm.
+The user wants a save point without ending the session. **Between saves, nothing but the two task lists is written:** the session log, comments, decisions, learned behaviour, feature list and resume state are written here and at `/end`, and only when the user asks, because saving on the agent's own initiative spends usage for nothing. So this command has to catch up on everything since the last save, from the conversation. It is still lighter than `/end`: no plan archiving, no session wrap-up, no full ledger rotation. Write the files, commit, push, and confirm.
 
-**Date convention:** all dates written by this skill use **dd/mm/yy** (UK format). Do not retroactively rewrite older dates already in safeguard files; only new entries follow this rule.
+**Date convention:** all dates written by this skill use **dd/mm/yy** (UK format). Do not retroactively rewrite older dates already in Context Guard files; only new entries follow this rule.
 
 ## Step 0: Locate CCG Root
 
-Safeguard files may not be in the current working directory; they could be in a subdirectory. Find them first.
+CCG_ROOT is the folder that holds the Context Guard files: in the current layout, the `context-guard/` folder in the project root (with `archive/`, `plans/`, `audits/`, `backups/` and `templates/` inside it). Find it in this order and stop at the first match:
 
-0. **Check for a pointer file first:** if `CCG_LOCATION.md` exists at the working-directory root, it names CCG_ROOT directly. Trust it and skip the search below.
-1. **Check the working directory:** Try to read `CLAUDE.md` in the current directory.
-2. **If not found, search subdirectories:**
-   ```bash
-   find . -maxdepth 4 -name "CLAUDE.md" -type f 2>/dev/null | head -10
-   ```
-3. **Filter:** For each result, check it contains `TASK_REGISTRY.md` (confirms it's a Context Guard CLAUDE.md) and does NOT contain `{PROJECT_NAME}` (uninitialized template).
-4. **Set CCG_ROOT:** Use the directory of the valid CLAUDE.md found. If multiple, ask the user. If none, warn: "No Context Guard files found. Run /start first."
+0. **Pointer file:** `CCG_LOCATION.md` in the working directory names CCG_ROOT directly. Trust it.
+1. **`./context-guard/`**, holding `TASK_REGISTRY.md`.
+2. **One level down**, when the working directory is a parent folder: `*/context-guard/TASK_REGISTRY.md`. If several projects match, ask the user which one.
+3. **An older layout**, until the project is upgraded: `find . -maxdepth 4 -name "TASK_REGISTRY.md" -not -path "*/templates/*" -not -path "*/archive/*" -not -path "*backups*"`; CCG_ROOT is the folder holding the match.
+4. **None found:** warn "No Context Guard files found. Run /start first." and stop.
 
-**All safeguard file paths in subsequent steps are relative to CCG_ROOT.** Git operations should also run from CCG_ROOT if it differs from the working directory.
+**All Context Guard paths below are relative to CCG_ROOT** (archive pages in `archive/`; on an older layout, wherever that project already keeps them). `CLAUDE.md` means the project's own, in the project root. Run git from the project root.
 
 ## Step 0.5: Completeness Check (never opt for brevity)
 
@@ -155,13 +152,13 @@ Check CLAUDE.md "Version Control" section:
 - If mode is "local" → commit only, no push
 - If mode is "remote" → commit and push (default behaviour if no Version Control section exists)
 
-After updating safeguard files, commit everything to git so the save point is durable:
+After writing the Context Guard files, commit them so the save point is durable:
 
 1. Run `git status` to see ALL modified and untracked files
-2. Stage the safeguard files AND any approved code changes since the last commit, **by explicit path**.
+2. Stage the Context Guard files AND any approved code changes since the last commit, **by explicit path**.
    **NEVER `git add -A` or `git add .`.** The working tree may be shared with other agents or with a paused lane of work, and a blanket stage sweeps their files into your commit. Name the paths you are committing. Anything you cannot attribute is left alone and surfaced to the user instead.
 3. Commit with a descriptive message: `"Checkpoint: [brief summary]"`
-4. Push to remote: `git pull --rebase origin main && git push`
+4. Push with the careful push in `/start` Step 2.7: confirm the current branch and its upstream, `git fetch` and look at ahead and behind before changing anything, push only this branch and only your own tags by name, rebase only onto this branch's own upstream, never force, and stop and ask the user if git refuses or a conflict appears.
 5. If `git status` still shows uncommitted project files after the commit, excluding gitignored files and other agents' untracked lanes, something was missed. Go back.
 
 If there are no changes to commit (everything is already committed), skip this step.
@@ -171,7 +168,7 @@ If there are no changes to commit (everything is already committed), skip this s
 Present a brief confirmation. Keep it concise, not a full report:
 
 ```
-## Checkpoint Saved
+## Saved
 
 - RESUME_STATE.md: in-flight snapshot written (Clean save: false)
 - SESSION_LOG.md: [updated/no changes needed]

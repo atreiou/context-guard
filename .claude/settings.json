@@ -19,7 +19,7 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-compact-save.sh\"",
             "timeout": 10,
-            "statusMessage": "Context Guard: auto-saving before compaction..."
+            "statusMessage": "Context Guard: backing up its files before compaction..."
           }
         ]
       }

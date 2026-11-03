@@ -1,5 +1,5 @@
 ---
-description: "Type /end to wrap up a session. Updates all safeguard files, confirms both task lists are correct, rotates anything older than 5 sessions into the archives, commits, and leaves a clean handoff."
+description: "Type /end to wrap up a session. Saves every Context Guard file in full, confirms both task lists are correct, rotates anything older than 5 sessions into the archive folder, commits, and leaves a clean handoff."
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
@@ -13,18 +13,17 @@ The user wants to wrap up this session cleanly. Your job is to create a save poi
 
 ## Step 0: Locate CCG Root
 
-Safeguard files may not be in the current working directory; they could be in a subdirectory. Find them first.
+CCG_ROOT is the folder that holds the Context Guard files: in the current layout, the `context-guard/` folder in the project root (with `archive/`, `plans/`, `audits/`, `backups/` and `templates/` inside it). Find it in this order and stop at the first match:
 
-0. **Check for a pointer file first:** if `CCG_LOCATION.md` exists at the working-directory root, it names CCG_ROOT directly. Trust it and skip the search below.
-1. **Check the working directory:** Try to read `CLAUDE.md` in the current directory.
-2. **If not found, search subdirectories:**
-   ```bash
-   find . -maxdepth 4 -name "CLAUDE.md" -type f 2>/dev/null | head -10
-   ```
-3. **Filter:** For each result, check it contains `TASK_REGISTRY.md` (confirms it's a Context Guard CLAUDE.md) and does NOT contain `{PROJECT_NAME}` (uninitialized template).
-4. **Set CCG_ROOT:** Use the directory of the valid CLAUDE.md found. If multiple, ask the user. If none, warn: "No Context Guard files found. Run /start first."
+0. **Pointer file:** `CCG_LOCATION.md` in the working directory names CCG_ROOT directly. Trust it.
+1. **`./context-guard/`**, holding `TASK_REGISTRY.md`.
+2. **One level down**, when the working directory is a parent folder: `*/context-guard/TASK_REGISTRY.md`. If several projects match, ask the user which one.
+3. **An older layout**, until the project is upgraded: `find . -maxdepth 4 -name "TASK_REGISTRY.md" -not -path "*/templates/*" -not -path "*/archive/*" -not -path "*backups*"`; CCG_ROOT is the folder holding the match.
+4. **None found:** warn "No Context Guard files found. Run /start first." and stop.
 
-**All safeguard file paths in subsequent steps are relative to CCG_ROOT.** Git operations should also run from CCG_ROOT if it differs from the working directory.
+**All Context Guard paths below are relative to CCG_ROOT.** Archive pages go in `archive/` and plans in `plans/`; on an older layout, keep them where that project already keeps them until it is upgraded. `CLAUDE.md` means the project's own, in the project root. Run git from the project root.
+
+**/end saves everything in full.** Between saves only the two task lists are written as work happens; everything else since the last `/save` is written now, from the conversation.
 
 ## Step 0.5: Completeness Check (never opt for brevity)
 
@@ -125,8 +124,8 @@ Check and update ALL of these:
 ### SESSION_LOG.md
 1. Count `## Session` headers. Keep the **last 5 sessions** in the main file.
 2. Everything above the 5th-from-last `## Session` header → move to archive.
-3. Determine the next page number: check for existing `SESSION_LOG_page*.md` files. New page = highest existing + 1 (or 1 if none exist).
-4. Create `SESSION_LOG_pageN.md` with header:
+3. Determine the next page number: check for existing `archive/SESSION_LOG_page*.md` files. New page = highest existing + 1 (or 1 if none exist).
+4. Create `archive/SESSION_LOG_pageN.md` (create `archive/` if it is missing) with header:
    ```
    # SESSION_LOG: Archive Page N (Sessions X to Y)
    # Current sessions: see SESSION_LOG.md
@@ -134,7 +133,7 @@ Check and update ALL of these:
    [archived content]
    ```
 5. Trim `SESSION_LOG.md`: keep the file header (lines before the first `## Session`) + the last 5 sessions.
-6. Add/update an archive reference line after the file header: `# 📁 Archives: SESSION_LOG_page1.md, SESSION_LOG_page2.md, ...`
+6. Add/update an archive reference line after the file header: `# 📁 Archives: archive/SESSION_LOG_page1.md, archive/SESSION_LOG_page2.md, ...`
 7. If 5 or fewer sessions exist, there is nothing to archive. Skip.
 
 ### TASK_REGISTRY.md (LIVE): never rotates
@@ -143,16 +142,16 @@ A task stays on LIVE until it finishes, however old it is. Nothing on LIVE is ar
 
 ### TASK_REGISTRY_COMPLETED.md
 1. Rotate only when the main file holds more than 500 rows. Otherwise skip.
-2. Move the oldest rows beyond 500 (the bottom of the table), verbatim and in order, to the next `TASK_REGISTRY_COMPLETED_pageN.md`, under the same `## COMPLETED TASKS` header row.
+2. Move the oldest rows beyond 500 (the bottom of the table), verbatim and in order, to the next `archive/TASK_REGISTRY_COMPLETED_pageN.md`, under the same `## COMPLETED TASKS` header row.
 3. Add/update the archive reference line in the main file's header, so a search for an earlier proof still finds the page.
 
 ### DECISIONS.md
 
 Decisions rotate on the same 5-session window as everything else, but with one extra step that makes it safe: **the main file keeps a one-line index of every decision that has been archived.**
 
-1. Move decisions older than the last 5 sessions into `DECISIONS_pageN.md`, full text intact.
+1. Move decisions older than the last 5 sessions into `archive/DECISIONS_pageN.md`, full text intact.
 2. For each one moved, add a line to the main file's `## Index of archived decisions` section:
-   `D-042: Sigil images are WebP-only [active-constraint] → DECISIONS_page3.md`
+   `D-042: Sigil images are WebP-only [active-constraint] → archive/DECISIONS_page3.md`
    ID, title, category, and which page holds it. Nothing more: the index has to stay cheap to read.
 3. If a decision has no `Category:` field, treat it as `active-constraint` (safe default) and flag it for classification in your end report.
 4. Mark `superseded` decisions as such (with a pointer to the D-number that replaced them) before archiving. They still archive, because a superseded decision explains why the current one exists.
@@ -164,9 +163,9 @@ Decisions rotate on the same 5-session window as everything else, but with one e
 
 Same mechanism as decisions.
 
-1. Move entries older than the last 5 sessions into `LEARNED_BEHAVIOUR_pageN.md`, full text intact.
+1. Move entries older than the last 5 sessions into `archive/LEARNED_BEHAVIOUR_pageN.md`, full text intact.
 2. For each one moved, add a line to the main file's `## Index of archived LBs` section:
-   `LB-017: WPFC cache clear needs a fresh nonce → LEARNED_BEHAVIOUR_page2.md`
+   `LB-017: WPFC cache clear needs a fresh nonce → archive/LEARNED_BEHAVIOUR_page2.md`
 3. An entry whose underlying platform or library has been removed, or upgraded past the bug, can be marked `resolved` in the index, so it stays findable but no longer needs reading.
 4. Add/update the archive reference line.
 
@@ -176,7 +175,7 @@ An archived learned behaviour is still true. The index line is what stops a futu
 1. Review each comment using your session context. Identify:
    - **Actioned comments**: turned into decisions, tasks, or file changes
    - **Curiosity questions**: exploratory/informational, not project directives
-2. Move both categories → `COMMENTS_pageN.md`.
+2. Move both categories → `archive/COMMENTS_pageN.md`.
 3. Keep all unactioned project directives in the main file.
 4. Add/update archive reference line.
 
@@ -215,7 +214,7 @@ If any file shows 0 changes, the reason must be specific (not "no changes needed
 ## Step 3: Archive Plans
 
 - Check `~/.claude/plans/` for plans belonging to this project
-- **`~/.claude/plans/` is SHARED across all Claude Code projects.** Plans from other projects will be in this folder. Do not touch them. To identify which plans belong to this project:
+- **`~/.claude/plans/` (where Claude Code keeps plans) is SHARED across all projects.** Plans from other projects will be in this folder. Do not touch them. To identify which plans belong to this project:
   - For each `.md` file (excluding `-agent-` files which are sub-agent plans):
     - Read the first ~500 characters
     - If the content contains the current project name (from CLAUDE.md), OR contains file paths matching this project's directory structure, it belongs to this project. Archive it.
@@ -250,16 +249,16 @@ Check CLAUDE.md "Version Control" section:
 5. Tag with the project's commit tagging convention
 6. Run `git status` AFTER committing. It MUST show a clean tree, excluding gitignored files and any untracked lane you deliberately left alone
 7. If the tree is NOT clean for any other reason → something was missed, go back
-8. Push to remote: `git pull --rebase origin main && git push && git push --tags`. Rebasing first keeps a shared branch linear and surfaces a divergence as a conflict you resolve now, rather than as a merge commit nobody asked for or a rejected push at the end of a session.
+8. Push with the careful push in `/start` Step 2.7: confirm the current branch and its upstream, `git fetch` and look at ahead and behind before changing anything, push only this branch and only the tag you just made, by name, rebase only onto this branch's own upstream, never force, and stop and ask the user if git refuses or a conflict appears.
 - **Backup remote (CCG only):** This step applies only to the Context Guard source-of-truth repo, which uses a dual-remote setup: `origin` (public) + `backup` (private dev). Most projects have a single `origin` remote, and that IS their backup. If you're on a project with only `origin`, skip this step. Do NOT flag a missing `backup` remote as an issue.
-  If a `backup` remote exists: `git checkout dev && git merge main --no-edit && git push backup dev && git checkout main`
+  If a `backup` remote exists: `git push backup main:dev`, which moves the backup's `dev` forward to `main` without switching branches. If the backup refuses it as not a fast-forward, stop and ask the user; never force it.
 
 ## Step 5: Verify Clean State
 
 Run these checks:
 - `git status` should be clean (no uncommitted changes)
-- `git log origin/main..HEAD --oneline` should be empty (nothing unpushed)
-- All safeguard files should be up to date
+- `git log @{u}..HEAD --oneline` should be empty (nothing unpushed on this branch)
+- All Context Guard files should be up to date
 
 ## Step 6: Report
 

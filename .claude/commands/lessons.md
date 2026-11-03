@@ -15,7 +15,7 @@ This skill mines that record, installs it where a future session will actually m
 
 ## Step 0: Locate CCG Root
 
-Same as `/start` Step 0: check for a `CCG_LOCATION.md` pointer at the working-directory root first, otherwise find the `CLAUDE.md` that mentions `TASK_REGISTRY.md`.
+Same as `/start` Step 0: a `CCG_LOCATION.md` pointer in the working directory first, then the `context-guard/` folder, then an older layout. LEARNED_BEHAVIOUR.md, DECISIONS.md and the archive pages below are all in CCG_ROOT.
 
 ## Step 1: Collect THIS session's scripts only
 

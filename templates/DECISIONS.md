@@ -20,7 +20,7 @@
 # **Affects:** T-001, T-045  (optional, tasks this governs)
 #
 # ROTATION: decisions older than the last 5 sessions move, full text intact, into
-# DECISIONS_page1.md, DECISIONS_page2.md, etc. Each one leaves a one-line entry in the index
+# archive/DECISIONS_page1.md, archive/DECISIONS_page2.md, etc. Each one leaves a one-line entry in the index
 # below. ARCHIVING DOES NOT REVOKE A DECISION. Forever-active and active-constraint decisions
 # govern from the archive exactly as they did from here. The index is how future sessions find
 # them, and it is why this file can stay small without any rule going missing.
@@ -32,7 +32,7 @@
 ## Index of archived decisions
 
 <!-- One line per archived decision. Format:
-     D-001: Short title [category] → DECISIONS_page1.md
+     D-001: Short title [category] → archive/DECISIONS_page1.md
      Keep it to one line each: this index is read at every /start, the archive pages are not. -->
 
 (Nothing archived yet.)

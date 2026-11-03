@@ -20,7 +20,7 @@
 # Something already proved here is never retested unless its files have changed since.
 #
 # ROTATION: when this file holds more than 500 rows, /end moves the oldest rows beyond 500, verbatim and in order,
-# to TASK_REGISTRY_COMPLETED_page1.md, page2 and so on. Nothing is ever deleted.
+# to archive/TASK_REGISTRY_COMPLETED_page1.md, page2 and so on. Nothing is ever deleted.
 #
 # 📁 Archives: (none yet)
 

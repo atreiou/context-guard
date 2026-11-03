@@ -1,12 +1,12 @@
 # Context Guard
 
-**Persistent context protection for Claude Code projects.**
+**Persistent context protection for AI coding agents.**
 
-Stop losing work to rate limits, session restarts, and context rot. Context Guard gives Claude Code a memory system that survives across sessions, so every restart picks up exactly where you left off.
+Stop losing work to rate limits, session restarts, and context rot. Context Guard gives your coding agent a memory system that survives across sessions, so every restart picks up exactly where you left off. It ships as Claude Code slash commands, and its files and rules work with any agent that can read an instruction file (Codex, for example, via AGENTS.md).
 
 ## The Problem
 
-Claude Code sessions get cut off by rate limits, context compaction, and crashes. Each new session starts fresh with no memory of what happened before. Tasks get dropped, decisions get forgotten, and you waste time re-explaining your project.
+Coding agent sessions get cut off by rate limits, context compaction, and crashes. Each new session starts fresh with no memory of what happened before. Tasks get dropped, decisions get forgotten, and you waste time re-explaining your project.
 
 This is a known issue. [Anthropic's own engineering team](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) documented the same failure modes and recommended external state files as the solution.
 
@@ -14,15 +14,15 @@ This is a known issue. [Anthropic's own engineering team](https://www.anthropic.
 
 ## My Solution
 
-Context Guard creates a set of safeguard files that persist across sessions, plus six slash commands:
+Context Guard creates a set of safeguard files that persist across sessions, all in one `context-guard/` folder, plus six slash commands. The files are written when you ask, with `/save` or `/end`, so the agent never spends your usage saving on its own; the one exception is the two task lists, which stay current as work happens.
 
-- **`/start`**: Type this at the start of every session. Claude reads your safeguard files, detects and commits orphaned work from crashed sessions, and summarises the project state. It reads the last five sessions' worth of content and nothing more: archives and plan files stay closed, so recovery costs a predictable, small number of tokens no matter how old the project is. Works from parent directories, automatically locating your project's Context Guard files in subdirectories. One command, full recovery.
+- **`/start`**: Type this at the start of every session. The agent reads your safeguard files, detects and commits orphaned work from crashed sessions, and summarises the project state. It reads the last five sessions' worth of content and nothing more: archives and plan files stay closed, so recovery costs a predictable, small number of tokens no matter how old the project is. Works from parent directories, automatically locating your project's Context Guard files in subdirectories. One command, full recovery.
 
-- **`/audit`**: Your personal safeguard. Call this at ANY moment to verify Claude's work. It runs a comprehensive integrity check across all files, plans, git state, and archived safeguard pages.
+- **`/audit`**: Your personal safeguard. Call this at ANY moment to verify the agent's work. It runs a comprehensive integrity check across all files, plans, git state, and archived safeguard pages.
 
-- **`/save`**: Mid-session checkpoint. Saves all progress to safeguard files, commits, and pushes, and writes an "in flight" handoff note so an interrupted session can be picked up mid-thought. Deliberately lightweight: it does not run the full archive rotation, because nothing has aged since the last one. Use during long sessions or any time you want an explicit save point.
+- **`/save`**: Your save point, whenever you want one. Writes everything since the last save to the safeguard files, commits, and pushes, and writes an "in flight" handoff note so an interrupted session can be picked up mid-thought. Deliberately lightweight: it does not run the full archive rotation, because nothing has aged since the last one. Use during long sessions or any time you want an explicit save point.
 
-- **`/end`**: Optional session save point. When you're done for the day, type `/end` and Claude will update all safeguard files, rotate anything older than five sessions into the archives, archive plans, commit, push (including to backup remotes if configured), and report a clean summary. Not required, since `/start` handles recovery regardless, but useful when you want an explicit clean handoff.
+- **`/end`**: Optional session save point. When you're done for the day, type `/end` and the agent will save every safeguard file in full, rotate anything older than five sessions into the archives, archive plans, commit, push (including to backup remotes if configured), and report a clean summary. Not required, since `/start` handles recovery regardless, but useful when you want an explicit clean handoff.
 
 - **`/lessons`**: Optional end-of-session harvest. Most of what a debugging session learns is thrown away with the throwaway scripts that learned it. `/lessons` diffs this session's scratch scripts against each other, because the diff between version 2 and version 3 is a literal record of what the agent believed that turned out to be false, proposes each finding to you for approval, installs the approved ones as learned behaviours or helper functions, and only then clears the spent scripts away.
 
@@ -43,57 +43,61 @@ cd context-guard
 ### Option 2: Manual Install
 
 1. Copy the `.claude/` folder into your project root
-2. Copy the `templates/` folder into your project root
+2. Copy the `templates/` folder to `context-guard/templates/` in your project root
 
 ### First Run
 
-Open Claude Code in your project and type `/start`. On first run, it will:
+Open your coding agent (Claude Code) in your project and type `/start`. On first run, it will:
 1. Detect this is a new project (no safeguard files yet)
 2. Ask for your project name and description
-3. Create all safeguard files from the templates
+3. Create the `context-guard/` folder and all safeguard files in it from the templates
 4. Offer to run `/itemise` for numbered code addressing (optional)
 
 From then on, `/start` reads your existing safeguard files and recovers full context. One command, full recovery.
 
 ### What Gets Created
 
+Everything goes in one `context-guard/` folder, so nothing of Context Guard's is scattered through your project root. `CLAUDE.md` is the one exception: it stays in the root, because that is where the agent reads it automatically.
+
 | File | Purpose |
 |------|---------|
-| `CLAUDE.md` | Auto-read every session. Project rules and pointers to other files |
-| `SESSION_LOG.md` | Running history of what happened each session. Auto-paginated when large |
-| `TASK_REGISTRY.md` | The LIVE task list: every task not yet finished, read in full at every `/start`. Never rotated |
-| `TASK_REGISTRY_COMPLETED.md` | The COMPLETED task list: every finished task, newest first, with whether and how it was tested and its proof |
-| `DECISIONS.md` | Architectural decisions register. The "why" behind every choice. Auto-paginated when large |
-| `COMMENTS.md` | Your verbatim comments logged as a safety net. Auto-paginated when large |
-| `FEATURE_LIST.json` | Pass/fail feature tracker (JSON is harder for LLMs to accidentally overwrite) |
-| `plans/` | Archived plans from every session, cross-referenced by /start and /audit |
-| `*_page*.md` | Archive pages holding everything older than the last 5 sessions |
+| `CLAUDE.md` (project root) | Read automatically every session. Project rules and pointers to the other files |
+| `context-guard/SESSION_LOG.md` | Running history of what happened each session. Rotated into the archive as it ages |
+| `context-guard/TASK_REGISTRY.md` | The LIVE task list: every task not yet finished, read in full at every `/start`. Never rotated |
+| `context-guard/TASK_REGISTRY_COMPLETED.md` | The COMPLETED task list: every finished task, newest first, with whether and how it was tested and its proof |
+| `context-guard/DECISIONS.md` | Architectural decisions register. The "why" behind every choice |
+| `context-guard/LEARNED_BEHAVIOUR.md` | Tactical knowledge: platform quirks and workarounds found the hard way |
+| `context-guard/COMMENTS.md` | Your verbatim comments logged as a safety net |
+| `context-guard/FEATURE_LIST.json` | Pass/fail feature tracker (JSON is harder for LLMs to accidentally overwrite) |
+| `context-guard/RESUME_STATE.md` | What was in flight at the last `/save` |
+| `context-guard/archive/` | Archive pages holding everything older than the last 5 sessions |
+| `context-guard/plans/`, `audits/`, `backups/`, `templates/` | Archived plans, saved audit reports, automatic backups, and the templates the project was set up from |
 
 ### What Gets Configured
 
 | Component | Purpose |
 |-----------|---------|
 | `/start` skill | Session recovery: one command to restore full context |
-| `/audit` skill | On-demand integrity check: verify Claude's work at any moment |
-| `/save` skill | Mid-session checkpoint: update safeguard files, write an in-flight handoff note, commit, push |
+| `/audit` skill | On-demand integrity check: verify the agent's work at any moment |
+| `/save` skill | Your save point: write the safeguard files and an in-flight handoff note, commit, push |
 | `/end` skill | Optional session save point: clean wrap-up with archive rotation, commit, push, backup sync |
 | `/lessons` skill | Turns a session's throwaway debug scripts into learned behaviours and helpers, then clears them |
 | `/itemise` skill | Itemisation Protocol: numbered code addressing with backup and integrity verification |
 | Task list checker | `.claude/tools/registry_check.js`: confirms the two task lists follow their rules, run by `/start`, `/save`, `/end` and `/audit` (needs Node.js) |
-| Pre-commit hook | Reminds Claude to update safeguard files before every git commit |
-| Pre-compaction hook | Automatically saves all progress before context compression, so no data loss |
+| Pre-commit hook | Reminds the agent before every git commit that the two task lists must be current |
+| Pre-compaction hook | Copies all eight safeguard files before context compression and checks every copy, so nothing is lost |
 
 ## How It Works
 
 ### Session Start (`/start`)
 
-1. Locates Context Guard files, searching subdirectories up to 4 levels deep, so you can launch from a parent directory
+1. Locates the `context-guard/` folder, in the project or one level down, so you can launch from a parent directory (older layouts are still found until the project is upgraded)
 2. Reads the current safeguard files: the last five sessions of history, the one-line indexes of everything archived, and the whole LIVE task list
 3. Checks git state, detecting and committing orphaned work from crashed or overflowed sessions
 4. Runs the task list checker and gives you its line: `Live tasks: N (W waiting on user)`
 5. Summarises everything and waits for your confirmation
 
-**What `/start` deliberately does NOT read:** archive pages, and plan files. Both are expensive and rarely needed at the moment a session opens. The archive indexes tell Claude what exists, and `RESUME_STATE.md` names the exact plan file and section the first task needs, so the relevant material gets opened when the work starts rather than before it. The full plan-versus-registry sweep, which catches dropped and unexplained tasks across every plan and every archive, lives in `/audit`, where it reads *all* plans rather than a sample.
+**What `/start` deliberately does NOT read:** archive pages, and plan files. Both are expensive and rarely needed at the moment a session opens. The archive indexes tell the agent what exists, and `RESUME_STATE.md` names the exact plan file and section the first task needs, so the relevant material gets opened when the work starts rather than before it. The full plan-versus-registry sweep, which catches dropped and unexplained tasks across every plan and every archive, lives in `/audit`, where it reads *all* plans rather than a sample.
 
 ### On-Demand Audit (`/audit`)
 
@@ -106,27 +110,27 @@ Everything `/start` does, plus:
 
 ### Session End (`/end`), optional
 
-When you're ready to stop working, type `/end`. Claude will:
+When you're ready to stop working, type `/end`. The agent will:
 1. Review everything done this session
-2. Update all safeguard files (session log, both task lists, comments, decisions, features), and confirm with the checker that both task lists are correct
+2. Save every safeguard file in full (session log, comments, decisions, learned behaviour, features), and confirm with the checker that both task lists are correct
 3. Rotate every ledger except the LIVE task list: anything older than the last five sessions moves into an archive page, leaving a one-line index entry behind
 4. Archive any unarchived plans
-5. Commit and push all changes (including backup remotes if configured)
+5. Commit and push carefully: only the current branch and its own tag, after checking the remote for divergence, never forced
 6. Verify clean git state
 7. Report a summary of the session and what's pending for next time
 
 This is entirely optional, since `/start` will recover context regardless. But `/end` gives you a guaranteed clean save point.
 
-### Mid-Session Checkpoint (`/save`)
+### Mid-Session Save (`/save`)
 
-A durable save point you can run at any time during a session. Claude will:
-1. Check for any unlogged comments, tasks, decisions, or credentials created this session
-2. Update all safeguard files with current progress
-3. Add a checkpoint marker to the session log with an "in flight" handoff note
-4. Commit and push all changes
+The safeguard files are written only when you ask. Agents left to themselves save constantly, which spends usage for nothing; `/save` puts that under your control. Between saves only the two task lists change, as tasks are created and finished. When you run `/save`, the agent will:
+1. Go back through the conversation for every comment, task, decision, or credential since the last save
+2. Write all of it to the safeguard files
+3. Add a save marker to the session log with an "in flight" handoff note
+4. Commit and push carefully
 5. Confirm what was saved
 
-`/save` skips the archive rotation on purpose. Running the full pass on every checkpoint costs context and archives nothing new, because no content has aged since the last one. Rotation is `/end`'s job; `/save` only touches a ledger that has visibly overgrown its window.
+`/save` skips the archive rotation on purpose. Running the full pass on every save costs context and archives nothing new, because no content has aged since the last one. Rotation is `/end`'s job; `/save` only touches a ledger that has visibly overgrown its window.
 
 Use it when a session is running long, before a risky operation, or any time you want peace of mind.
 
@@ -202,7 +206,7 @@ This file is interwoven with auth.js. Edit one, edit the other (see CLAUDE.md �
 
 ### Ledger Rotation: the 5-session rule
 
-As projects grow, safeguard files accumulate history that eats into the context window on every `/start`. Context Guard bounds this: **every ledger's main file holds only the last five sessions' content.** Everything older moves, verbatim, into numbered archive pages (`SESSION_LOG_page1.md`, `DECISIONS_page2.md`, and so on), which are append-only and never deleted. The LIVE task list is the one exception.
+As projects grow, safeguard files accumulate history that eats into the context window on every `/start`. Context Guard bounds this: **every ledger's main file holds only the last five sessions' content.** Everything older moves, verbatim, into numbered archive pages in `context-guard/archive/` (`SESSION_LOG_page1.md`, `DECISIONS_page2.md`, and so on), which are append-only and never deleted. The LIVE task list is the one exception.
 
 `/end` runs the rotation every session, using the full session context it has right there to make the archival calls well.
 
@@ -218,10 +222,10 @@ As projects grow, safeguard files accumulate history that eats into the context 
 **The archive index is what makes this safe.** When a decision is moved out, a single line stays behind in the main file giving its ID, title, category, and which page holds it:
 
 ```
-D-042: Sigil images are WebP-only [active-constraint] → DECISIONS_page3.md
+D-042: Sigil images are WebP-only [active-constraint] → archive/DECISIONS_page3.md
 ```
 
-**Archiving a decision does not revoke it.** A `forever-active` or `active-constraint` decision governs from the archive exactly as it did from the main file. The index is how a future session finds it: `/start` reads the index, and if a line touches the work about to be done, Claude opens that one archive entry at that point.
+**Archiving a decision does not revoke it.** A `forever-active` or `active-constraint` decision governs from the archive exactly as it did from the main file. The index is how a future session finds it: `/start` reads the index, and if a line touches the work about to be done, the agent opens that one archive entry at that point.
 
 Without the index, the only way to keep a binding rule discoverable was to never archive it, which meant DECISIONS.md grew without limit until it swallowed the context window at every session start. With it, the main file stays small and nothing stops applying.
 
@@ -245,22 +249,15 @@ Every project keeps exactly two task lists, and no task is kept anywhere else.
 - **A handover's tasks are merged into LIVE**, so there is only ever one list of pending tasks; the handover itself still stands for everything else it explains.
 - **`/start` reads only LIVE, all of it. `/save` and `/end` confirm both lists are correct** with the checker, `.claude/tools/registry_check.js`, which flags a status outside the three words, a row not re-checked for two sessions, a task row outside the two tables, a DONE with no proof, a DROPPED with no quote, COMPLETED out of date order, and the same task on both lists.
 
-**Upgrading an existing project.** A project installed before the two lists still has one `TASK_REGISTRY.md`. `/start` notices and asks whether to build the two lists straight away or wait. Building them follows `templates/UPGRADE_TWO_TASK_LISTS.md`: the old file is kept whole in an archive page, and every row is checked against the evidence before it is placed, because a row in the old list may say pending when the work was finished and recorded somewhere else.
+**Upgrading an existing project.** A project installed before these changes keeps its files where they were and has one `TASK_REGISTRY.md`. `/start` notices and asks whether to upgrade straight away or wait. The upgrade follows `templates/UPGRADE.md`: it moves every Context Guard file into the `context-guard/` folder (archive pages into `archive/`), then builds the two lists, keeping the old list whole in an archive page and checking every row against the evidence before it is placed, because a row in the old list may say pending when the work was finished and recorded somewhere else.
 
-### Automatic Pre-Compaction Save
+### Automatic Pre-Compaction Backup
 
-When Claude Code is about to compress your conversation (context compaction), a `PreCompact` hook fires automatically and backs up all safeguard files to a timestamped `compaction-backups/` directory. This is a safety net: if safeguard files weren't fully up to date when compaction hit, the backup preserves the last known state.
+When the agent's conversation is about to be compressed (context compaction), a `PreCompact` hook fires automatically and copies all eight safeguard files, LEARNED_BEHAVIOUR.md and RESUME_STATE.md included, into a dated folder in `context-guard/backups/`. It checks every copy against its original, byte for byte, and reports success only when all of them match; a failed copy is reported as a failure, never as a backup. It only copies files, so it costs no usage.
 
-Combined with the auto-checkpoint protocol (which keeps safeguard files current throughout the session), this means compaction is a non-event. Your progress is either already saved to the safeguard files, or captured in the backup.
+### Pre-Commit Reminder
 
-### Pre-Commit Safety
-
-Before every git commit, a hook reminds Claude to update:
-- COMMENTS.md (any new user feedback)
-- The two task lists (new tasks on LIVE, finished ones moved to the top of COMPLETED)
-- SESSION_LOG.md (if significant milestone)
-- FEATURE_LIST.json (if feature status changed)
-- plans/ (any unarchived plans)
+Before every git commit, a hook reminds the agent that the two task lists must already be current: every new task on LIVE, every finished one moved to the top of COMPLETED. It asks for nothing else, because the other safeguard files wait for `/save` and `/end`.
 
 ## Git Conventions
 

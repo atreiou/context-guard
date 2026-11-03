@@ -13,12 +13,14 @@
 #   1. The moment a task finishes, its row comes off this list and goes to the TOP of TASK_REGISTRY_COMPLETED.md,
 #      in that same turn. Never saved up for /end, never recorded somewhere else instead. "Handed over" is not a status.
 #   2. No task lives anywhere else: no per-session task blocks, no carried or backlog sections, no separate tested list.
-#   3. /start reads ALL of this list. /save and /end run the checker and fix or report every flagged row.
+#   3. This list and COMPLETED are the only Context Guard files written as work happens; everything else waits for
+#      /save or /end. /start reads ALL of this list. /save and /end run the checker and fix or report every flag.
 #   4. A handover's open tasks, and its questions for the user, are merged into this list at once. The handover
 #      itself still stands for everything else it explains.
 #   5. This list never rotates, and no row is carried forward or archived without being checked.
 #
-# Checker: node .claude/tools/registry_check.js --root "<folder holding this file>"
+# Lives in context-guard/, with every other Context Guard file.
+# Checker: node .claude/tools/registry_check.js --root context-guard
 
 ---
 

@@ -8,6 +8,7 @@
 # understand the user's actual intent, not just what was done.
 #
 # Format: Timestamp | Session | Verbatim comment
-# Claude MUST append to this file every time the user provides direction, feedback, or decisions
+# The agent writes every direction, piece of feedback and decision the user gives into this file, verbatim,
+# at every /save and /end (Context Guard files other than the task lists are written only then)
 
 ---

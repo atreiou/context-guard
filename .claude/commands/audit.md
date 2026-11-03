@@ -11,23 +11,20 @@ Execute ALL checks below and report findings.
 
 ## 0. Locate CCG Root
 
-Safeguard files may not be in the current working directory; they could be in a subdirectory. Find them first.
+CCG_ROOT is the folder that holds the Context Guard files: in the current layout, the `context-guard/` folder in the project root (with `archive/`, `plans/`, `audits/`, `backups/` and `templates/` inside it). Find it in this order and stop at the first match:
 
-0. **Check for a pointer file first:** if `CCG_LOCATION.md` exists at the working-directory root, it names CCG_ROOT directly. Trust it and skip the search below.
-1. **Check the working directory:** Try to read `CLAUDE.md` in the current directory.
-2. **If not found, search subdirectories:**
-   ```bash
-   find . -maxdepth 4 -name "CLAUDE.md" -type f 2>/dev/null | head -10
-   ```
-3. **Filter:** For each result, check it contains `TASK_REGISTRY.md` (confirms it's a Context Guard CLAUDE.md) and does NOT contain `{PROJECT_NAME}` (uninitialized template).
-4. **Set CCG_ROOT:** Use the directory of the valid CLAUDE.md found. If multiple, ask the user. If none, warn: "No Context Guard files found. Run /start first."
+0. **Pointer file:** `CCG_LOCATION.md` in the working directory names CCG_ROOT directly. Trust it.
+1. **`./context-guard/`**, holding `TASK_REGISTRY.md`.
+2. **One level down**, when the working directory is a parent folder: `*/context-guard/TASK_REGISTRY.md`. If several projects match, ask the user which one.
+3. **An older layout**, until the project is upgraded: `find . -maxdepth 4 -name "TASK_REGISTRY.md" -not -path "*/templates/*" -not -path "*/archive/*" -not -path "*backups*"`; CCG_ROOT is the folder holding the match.
+4. **None found:** warn "No Context Guard files found. Run /start first." and stop.
 
-**All file paths in subsequent steps are relative to CCG_ROOT.** Git operations should also run from CCG_ROOT if it differs from the working directory.
+**All file paths below are relative to CCG_ROOT** (archive pages in `archive/`; on an older layout, wherever that project keeps them). `CLAUDE.md` means the project's own, in the project root. Run git from the project root.
 
 ## 1. Git State
-- Run `git status`. Any uncommitted or untracked files?
+- Run `git status -sb`. Which branch? Any uncommitted or untracked files?
 - Run `git log --oneline -5` for recent commits with tags
-- Run `git log origin/main..HEAD --oneline`. Any unpushed commits?
+- Run `git log @{u}..HEAD --oneline`. Any unpushed commits on this branch?
 - **CRITICAL** if anything is uncommitted or unpushed
 
 ## 2. Task Lists Integrity
@@ -42,7 +39,7 @@ Safeguard files may not be in the current working directory; they could be in a 
 ## 3. Plan Cross-Reference
 - Read ALL plan files from `plans/` directory
 - For EVERY task/step in every plan, verify it is on LIVE or COMPLETED
-- If a task from a plan is on neither, **check the archive pages** (`TASK_REGISTRY_COMPLETED_page*.md`, and `TASK_REGISTRY_page*.md` from before the two lists) before flagging, since it may have been completed and archived
+- If a task from a plan is on neither, **check the archive pages** (`archive/TASK_REGISTRY_COMPLETED_page*.md`, and `archive/TASK_REGISTRY_page*.md` from before the two lists) before flagging, since it may have been completed and archived
 - Flag: tasks in plans on neither list AND NOT in any archive = **DROPPED TASK (CRITICAL)**
 - Flag: tasks on either list with no plan, decision, or comment source = **UNEXPLAINED TASK**
 
@@ -63,7 +60,7 @@ Safeguard files may not be in the current working directory; they could be in a 
 Rotation moves decisions and learned behaviours out of the main files and leaves a one-line index entry behind. Those index lines are the ONLY way a future session finds an archived rule, so a missing line is a silently lost rule, which is exactly the failure this audit exists to catch.
 
 For DECISIONS and LEARNED_BEHAVIOUR:
-- Enumerate every entry ID in the `_page*.md` archives.
+- Enumerate every entry ID in the archive pages (`archive/DECISIONS_page*.md`, `archive/LEARNED_BEHAVIOUR_page*.md`).
 - Enumerate every ID listed in the main file's `## Index of archived decisions` / `## Index of archived LBs`.
 - **In an archive but NOT in the index** = **CRITICAL, LOST RULE.** The entry exists but nothing points at it; no future session will ever find it. Report the ID, the page it is on, and its category.
 - **In the index but NOT in any archive** = **CRITICAL, BROKEN POINTER.** The index promises an entry that is not there. It was either deleted or never moved.
@@ -100,8 +97,9 @@ Also check that no ID is missing from the sequence across main file + all archiv
   - `COMMENTS.md`
   - `FEATURE_LIST.json`
 - **CRITICAL** if any file is missing or empty
+- **Layout:** every Context Guard file is in the one `context-guard/` folder, archive pages in its `archive/` folder, and nothing of Context Guard's sits loose in the project root except `CLAUDE.md`. Files loose in the root, or archive pages beside the main files, = **WARNING, older layout**: the upgrade in `templates/UPGRADE.md` tidies it.
 - **RESUME_STATE.md integrity:** If `Clean save: false` but the last session has a `## Session` entry in SESSION_LOG.md, something is inconsistent. Flag as **WARNING**.
-- Check for archive page files (`*_page*.md`). If they exist:
+- Check for archive pages in `archive/`. If they exist:
   - Verify each has a valid header (file name, page number, session/entry range)
   - Report as **INFO**: "N archive pages found for [file], historical data preserved"
 
@@ -162,7 +160,7 @@ This catches the most likely failure mode: a coding agent edited the source file
 ## 10. Save Report
 
 Save the full audit report (exactly as displayed above) to:
-`audits/YYYY-MM-DD_HHMMSS.md`
+`audits/YYYY-MM-DD_HHMMSS.md` (inside CCG_ROOT)
 
 Create the `audits/` directory if it doesn't exist. The timestamp uses the current date/time. This creates a persistent audit trail that survives context loss and can be read by external tools.
 

@@ -6,7 +6,8 @@
 //
 //   node .claude/tools/registry_check.js --root "<CCG_ROOT>" [--session S12]
 //
-// --root     the folder holding TASK_REGISTRY.md (CCG_ROOT). Defaults to the working directory.
+// --root     the folder holding TASK_REGISTRY.md (CCG_ROOT). Defaults to ./context-guard when it exists,
+//            otherwise the working directory (older layouts, until the project is upgraded).
 // --session  the current session. Defaults to the newest "## Session N" in SESSION_LOG.md plus one, which is right
 //            at /start; /save and /end pass it explicitly because the current session is already logged by then.
 // Exit codes: 0 both lists clean, 1 rows need fixing, 2 the project still has the old single task list.
@@ -16,7 +17,8 @@ const fs = require('fs'), path = require('path')
 // 1. SECTION: Arguments and paths
 const argv = process.argv
 const opt = name => { const i = argv.indexOf(name); return i > 0 && i + 1 < argv.length ? argv[i + 1] : null }
-const ROOT = path.resolve(opt('--root') || process.cwd())
+const ROOT = path.resolve(opt('--root') ||
+  (fs.existsSync(path.join(process.cwd(), 'context-guard', 'TASK_REGISTRY.md')) ? path.join(process.cwd(), 'context-guard') : process.cwd()))
 const LIVE_FILE = 'TASK_REGISTRY.md', DONE_FILE = 'TASK_REGISTRY_COMPLETED.md'
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r/g, '')
 if (!fs.existsSync(path.join(ROOT, LIVE_FILE))) {
