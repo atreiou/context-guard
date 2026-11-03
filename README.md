@@ -14,7 +14,7 @@ This is a known issue. [Anthropic's own engineering team](https://www.anthropic.
 
 ## My Solution
 
-Context Guard creates a set of safeguard files that persist across sessions, all in one `context-guard/` folder, plus six slash commands. The files are written when you ask, with `/save` or `/end`, so the agent never spends your usage saving on its own; the one exception is the two task lists, which stay current as work happens.
+Context Guard creates a set of safeguard files that persist across sessions, all in one `context-guard/` folder, plus six slash commands. The files are written when you ask, with `/save` or `/end`, so the agent never spends your usage saving on its own; the one exception is the two lists, which stay current as work happens.
 
 - **`/start`**: Type this at the start of every session. The agent reads your safeguard files, detects and commits orphaned work from crashed sessions, and summarises the project state. It reads the last five sessions' worth of content and nothing more: archives and plan files stay closed, so recovery costs a predictable, small number of tokens no matter how old the project is. Works from parent directories, automatically locating your project's Context Guard files in subdirectories. One command, full recovery.
 
@@ -63,8 +63,8 @@ Everything goes in one `context-guard/` folder, so nothing of Context Guard's is
 |------|---------|
 | `CLAUDE.md` (project root) | Read automatically every session. Project rules and pointers to the other files |
 | `context-guard/SESSION_LOG.md` | Running history of what happened each session. Rotated into the archive as it ages |
-| `context-guard/TASK_REGISTRY.md` | The LIVE task list: every task not yet finished, read in full at every `/start`. Never rotated |
-| `context-guard/TASK_REGISTRY_COMPLETED.md` | The COMPLETED task list: every finished task, newest first, with whether and how it was tested and its proof |
+| `context-guard/TO_DO_LIST.md` | The to do list: every task not yet finished, read in full at every `/start`. Never rotated |
+| `context-guard/DONE_LIST.md` | The done list: every finished task, newest first, with whether and how it was tested and its proof |
 | `context-guard/DECISIONS.md` | Architectural decisions register. The "why" behind every choice |
 | `context-guard/LEARNED_BEHAVIOUR.md` | Tactical knowledge: platform quirks and workarounds found the hard way |
 | `context-guard/COMMENTS.md` | Your verbatim comments logged as a safety net |
@@ -83,8 +83,8 @@ Everything goes in one `context-guard/` folder, so nothing of Context Guard's is
 | `/end` skill | Optional session save point: clean wrap-up with archive rotation, commit, push, backup sync |
 | `/lessons` skill | Turns a session's throwaway debug scripts into learned behaviours and helpers, then clears them |
 | `/itemise` skill | Itemisation Protocol: numbered code addressing with backup and integrity verification |
-| Task list checker | `.claude/tools/registry_check.js`: confirms the two task lists follow their rules, run by `/start`, `/save`, `/end` and `/audit` (needs Node.js) |
-| Pre-commit hook | Reminds the agent before every git commit that the two task lists must be current |
+| List checker | `.claude/tools/registry_check.js`: confirms the two lists follow their rules, run by `/start`, `/save`, `/end` and `/audit` (needs Node.js) |
+| Pre-commit hook | Reminds the agent before every git commit that the two lists must be current |
 | Pre-compaction hook | Copies all eight safeguard files before context compression and checks every copy, so nothing is lost |
 
 ## How It Works
@@ -92,9 +92,9 @@ Everything goes in one `context-guard/` folder, so nothing of Context Guard's is
 ### Session Start (`/start`)
 
 1. Locates the `context-guard/` folder, in the project or one level down, so you can launch from a parent directory (older layouts are still found until the project is upgraded)
-2. Reads the current safeguard files: the last five sessions of history, the one-line indexes of everything archived, and the whole LIVE task list
+2. Reads the current safeguard files: the last five sessions of history, the one-line indexes of everything archived, and the whole to do list
 3. Checks git state, detecting and committing orphaned work from crashed or overflowed sessions
-4. Runs the task list checker and gives you its line: `Live tasks: N (W waiting on user)`
+4. Runs the list checker and gives you its line: `To do: N (W waiting on user)`
 5. Summarises everything and waits for your confirmation
 
 **What `/start` deliberately does NOT read:** archive pages, and plan files. Both are expensive and rarely needed at the moment a session opens. The archive indexes tell the agent what exists, and `RESUME_STATE.md` names the exact plan file and section the first task needs, so the relevant material gets opened when the work starts rather than before it. The full plan-versus-registry sweep, which catches dropped and unexplained tasks across every plan and every archive, lives in `/audit`, where it reads *all* plans rather than a sample.
@@ -112,8 +112,8 @@ Everything `/start` does, plus:
 
 When you're ready to stop working, type `/end`. The agent will:
 1. Review everything done this session
-2. Save every safeguard file in full (session log, comments, decisions, learned behaviour, features), and confirm with the checker that both task lists are correct
-3. Rotate every ledger except the LIVE task list: anything older than the last five sessions moves into an archive page, leaving a one-line index entry behind
+2. Save every safeguard file in full (session log, comments, decisions, learned behaviour, features), and confirm with the checker that both lists are correct
+3. Rotate every ledger except the to do list: anything older than the last five sessions moves into an archive page, leaving a one-line index entry behind
 4. Archive any unarchived plans
 5. Commit and push carefully: only the current branch and its own tag, after checking the remote for divergence, never forced
 6. Verify clean git state
@@ -123,7 +123,7 @@ This is entirely optional, since `/start` will recover context regardless. But `
 
 ### Mid-Session Save (`/save`)
 
-The safeguard files are written only when you ask. Agents left to themselves save constantly, which spends usage for nothing; `/save` puts that under your control. Between saves only the two task lists change, as tasks are created and finished. When you run `/save`, the agent will:
+The safeguard files are written only when you ask. Agents left to themselves save constantly, which spends usage for nothing; `/save` puts that under your control. Between saves only the two lists change, as tasks are created and finished. When you run `/save`, the agent will:
 1. Go back through the conversation for every comment, task, decision, or credential since the last save
 2. Write all of it to the safeguard files
 3. Add a save marker to the session log with an "in flight" handoff note
@@ -206,15 +206,15 @@ This file is interwoven with auth.js. Edit one, edit the other (see CLAUDE.md â†
 
 ### Ledger Rotation: the 5-session rule
 
-As projects grow, safeguard files accumulate history that eats into the context window on every `/start`. Context Guard bounds this: **every ledger's main file holds only the last five sessions' content.** Everything older moves, verbatim, into numbered archive pages in `context-guard/archive/` (`SESSION_LOG_page1.md`, `DECISIONS_page2.md`, and so on), which are append-only and never deleted. The LIVE task list is the one exception.
+As projects grow, safeguard files accumulate history that eats into the context window on every `/start`. Context Guard bounds this: **every ledger's main file holds only the last five sessions' content.** Everything older moves, verbatim, into numbered archive pages in `context-guard/archive/` (`SESSION_LOG_page1.md`, `DECISIONS_page2.md`, and so on), which are append-only and never deleted. The to do list is the one exception.
 
 `/end` runs the rotation every session, using the full session context it has right there to make the archival calls well.
 
 | File | What stays in the main file | What gets archived |
 |------|---------------------------|-------------------|
 | SESSION_LOG | Last 5 sessions | Older session entries |
-| TASK_REGISTRY (LIVE) | Every task not yet finished, however old | Nothing, ever |
-| TASK_REGISTRY_COMPLETED | The newest 500 finished tasks | Older finished tasks, once the file passes 500 rows |
+| TASK_REGISTRY (the to do list) | Every task not yet finished, however old | Nothing, ever |
+| DONE_LIST | The newest 500 finished tasks | Older finished tasks, once the file passes 500 rows |
 | DECISIONS | Last 5 sessions of decisions, **plus a one-line index of every archived decision** | Older decisions, full text |
 | LEARNED_BEHAVIOUR | Last 5 sessions of entries, **plus a one-line index of every archived entry** | Older entries, full text |
 | COMMENTS | Unactioned project directives | Actioned comments and curiosity questions |
@@ -229,27 +229,27 @@ D-042: Sigil images are WebP-only [active-constraint] â†’ archive/DECISIONS_page
 
 Without the index, the only way to keep a binding rule discoverable was to never archive it, which meant DECISIONS.md grew without limit until it swallowed the context window at every session start. With it, the main file stays small and nothing stops applying.
 
-**Pending tasks are never rotated at all.** An unfinished task stays on the LIVE list until it finishes, however old it is. Rotating open tasks into backlog sections is how they get lost: the sections fill up, no session reads them, and work that was finished elsewhere is never closed on its own row. See [Two Task Lists](#two-task-lists-live-and-completed) below.
+**Pending tasks are never rotated at all.** An unfinished task stays on the to do list until it finishes, however old it is. Rotating open tasks into backlog sections is how they get lost: the sections fill up, no session reads them, and work that was finished elsewhere is never closed on its own row. See [Two Task Lists](#two-task-lists-live-and-completed) below.
 
 `/audit` also verifies index integrity in both directions: an entry sitting in an archive with no index line is a **lost rule**, and an index line pointing at an entry that is not there is a **broken pointer**. Both are reported as critical.
 
-### Two Task Lists: LIVE and COMPLETED
+### Two Task Lists: the to do list and the done list
 
-Every project keeps exactly two task lists, and no task is kept anywhere else.
+Every project keeps exactly two lists, and no task is kept anywhere else.
 
 | List | File | Holds | Columns |
 |------|------|-------|---------|
-| LIVE | `TASK_REGISTRY.md` | Every task not yet finished | `ID \| Task \| Status \| Updated \| Notes` |
-| COMPLETED | `TASK_REGISTRY_COMPLETED.md` | Every finished task, newest at the top | `ID \| Task \| Outcome \| Tested \| Proof` |
+| the to do list | `TO_DO_LIST.md` | Every task not yet finished | `ID \| Task \| Status \| Updated \| Notes` |
+| the done list | `DONE_LIST.md` | Every finished task, newest at the top | `ID \| Task \| Outcome \| Tested \| Proof` |
 
 - **Status** starts with `PENDING`, `IN PROGRESS` or `WAITING ON USER`, then one sentence of what is left. **Updated** is the session and date the row was last checked against the evidence.
 - **Outcome** is `DONE`, `SUPERSEDED` (by a named task) or `DROPPED` (only with the user's own words quoted), with a date. **Tested** is `TESTED BY USER`, `TESTED INDEPENDENTLY`, `BUILDER ONLY` or `NOT TESTED`, with where the record is. **Proof** is a path or a commit.
-- **The moment a task finishes**, its row comes off LIVE and goes to the top of COMPLETED, in that same turn. Nothing is saved up for `/end`.
-- **COMPLETED is also the tested list.** Something already proved there is not retested unless its files have changed since.
-- **A handover's tasks are merged into LIVE**, so there is only ever one list of pending tasks; the handover itself still stands for everything else it explains.
-- **`/start` reads only LIVE, all of it. `/save` and `/end` confirm both lists are correct** with the checker, `.claude/tools/registry_check.js`, which flags a status outside the three words, a row not re-checked for two sessions, a task row outside the two tables, a DONE with no proof, a DROPPED with no quote, COMPLETED out of date order, and the same task on both lists.
+- **The moment a task finishes**, its row comes off the to do list and goes to the top of the done list, in that same turn. Nothing is saved up for `/end`.
+- **The done list is also the tested list.** Something already proved there is not retested unless its files have changed since.
+- **A handover's tasks are merged into the to do list**, so there is only ever one list of pending tasks; the handover itself still stands for everything else it explains.
+- **`/start` reads only the to do list, all of it. `/save` and `/end` confirm both lists are correct** with the checker, `.claude/tools/registry_check.js`, which flags a status outside the three words, a row not re-checked for two sessions, a task row outside the two tables, a DONE with no proof, a DROPPED with no quote, the done list out of date order, and the same task on both lists.
 
-**Upgrading an existing project.** A project installed before these changes keeps its files where they were and has one `TASK_REGISTRY.md`. `/start` notices and asks whether to upgrade straight away or wait. The upgrade follows `templates/UPGRADE.md`: it moves every Context Guard file into the `context-guard/` folder (archive pages into `archive/`), then builds the two lists, keeping the old list whole in an archive page and checking every row against the evidence before it is placed, because a row in the old list may say pending when the work was finished and recorded somewhere else.
+**Upgrading an existing project.** A project installed before these changes keeps its files where they were and has one `TO_DO_LIST.md`. `/start` notices and asks whether to upgrade straight away or wait. The upgrade follows `templates/UPGRADE.md`: it moves every Context Guard file into the `context-guard/` folder (archive pages into `archive/`), then builds the two lists, keeping the old list whole in an archive page and checking every row against the evidence before it is placed, because a row in the old list may say pending when the work was finished and recorded somewhere else.
 
 ### Automatic Pre-Compaction Backup
 
@@ -257,7 +257,7 @@ When the agent's conversation is about to be compressed (context compaction), a 
 
 ### Pre-Commit Reminder
 
-Before every git commit, a hook reminds the agent that the two task lists must already be current: every new task on LIVE, every finished one moved to the top of COMPLETED. It asks for nothing else, because the other safeguard files wait for `/save` and `/end`.
+Before every git commit, a hook reminds the agent that the two lists must already be current: every new task on the to do list, every finished one moved to the top of the done list. It asks for nothing else, because the other safeguard files wait for `/save` and `/end`.
 
 ## Git Conventions
 

@@ -18,7 +18,8 @@ fi
 # end of 1
 
 # 2. SECTION: Copy into a partial folder, verify every copy, then mark it complete
-FILES=(RESUME_STATE.md SESSION_LOG.md TASK_REGISTRY.md TASK_REGISTRY_COMPLETED.md DECISIONS.md LEARNED_BEHAVIOUR.md COMMENTS.md FEATURE_LIST.json)
+# TASK_REGISTRY.md is the old single task list, still present until a project is upgraded
+FILES=(RESUME_STATE.md SESSION_LOG.md TO_DO_LIST.md DONE_LIST.md TASK_REGISTRY.md DECISIONS.md LEARNED_BEHAVIOUR.md COMMENTS.md FEATURE_LIST.json)
 STAMP="$(date +%Y-%m-%d_%H%M%S)"
 PARTIAL="$DEST/$STAMP.partial"
 if ! mkdir -p "$PARTIAL"; then

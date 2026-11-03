@@ -1,5 +1,5 @@
 ---
-description: "Type /start at the beginning of every session. Reads the Context Guard files (last-5-sessions window, plus the whole LIVE task list), checks the two task lists, recovers context, and summarises project state."
+description: "Type /start at the beginning of every session. Reads the Context Guard files (last-5-sessions window, plus the whole to do list), checks the two lists, recovers context, and summarises project state."
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 
@@ -16,11 +16,11 @@ You are starting or resuming a session. Follow these steps EXACTLY:
 CCG_ROOT is the folder that holds the Context Guard files. In the current layout it is the `context-guard/` folder in the project root, with `archive/`, `plans/`, `audits/`, `backups/` and `templates/` inside it. The project's `CLAUDE.md` is the one Context Guard file that stays in the project root, because that is where the agent reads it automatically. Find CCG_ROOT in this order and stop at the first match:
 
 0. **Pointer file:** `CCG_LOCATION.md` in the working directory names CCG_ROOT directly. Trust it.
-1. **`./context-guard/`**, holding `TASK_REGISTRY.md`.
-2. **One level down**, when the working directory is a parent folder: `*/context-guard/TASK_REGISTRY.md`. If several projects match, ask the user which one.
+1. **`./context-guard/`**, holding `TO_DO_LIST.md`.
+2. **One level down**, when the working directory is a parent folder: `*/context-guard/TO_DO_LIST.md`. If several projects match, ask the user which one.
 3. **An older layout**, until the project is upgraded:
    ```bash
-   find . -maxdepth 4 -name "TASK_REGISTRY.md" -not -path "*/templates/*" -not -path "*/archive/*" -not -path "*backups*" 2>/dev/null | head -10
+   find . -maxdepth 4 \( -name "TO_DO_LIST.md" -o -name "TASK_REGISTRY.md" \) -not -path "*/templates/*" -not -path "*/archive/*" -not -path "*backups*" 2>/dev/null | head -10
    ```
    CCG_ROOT is the folder holding the match (often the project root itself, or a folder named `Context Guard`). Ignore a match whose `CLAUDE.md` still contains `{PROJECT_NAME}`. Note that this project is on an older layout: Step 1 offers the upgrade.
 4. **None found:** this is a **first run**. Go to the First-Run Setup below.
@@ -47,7 +47,7 @@ If the project-root `CLAUDE.md` still contains the placeholder `{PROJECT_NAME}`,
 3. **Create the Context Guard folder and its files.** Every Context Guard file lives in one `context-guard/` folder; nothing but `CLAUDE.md` goes loose in the project root.
    - Create `context-guard/` with `archive/`, `plans/`, `audits/` and `backups/` inside it.
    - If the templates were copied to the project root (`templates/`), move that folder to `context-guard/templates/`, but only if it holds nothing except Context Guard templates. A project can have a `templates/` folder of its own: then move only the Context Guard template files, by name.
-   - From the templates, create in `context-guard/`: `SESSION_LOG.md`, `TASK_REGISTRY.md`, `TASK_REGISTRY_COMPLETED.md`, `DECISIONS.md`, `COMMENTS.md`, `FEATURE_LIST.json`, `LEARNED_BEHAVIOUR.md`, `RESUME_STATE.md`.
+   - From the templates, create in `context-guard/`: `SESSION_LOG.md`, `TO_DO_LIST.md`, `DONE_LIST.md`, `DECISIONS.md`, `COMMENTS.md`, `FEATURE_LIST.json`, `LEARNED_BEHAVIOUR.md`, `RESUME_STATE.md`.
    - Copy `templates/CLAUDE.md` to `CLAUDE.md` in the project root. If the project already has a `CLAUDE.md` of its own, add the template's sections below its existing content instead of replacing it.
 
 4. **Populate placeholders** in `CLAUDE.md` and the new files:
@@ -88,8 +88,8 @@ If the project-root `CLAUDE.md` still contains the placeholder `{PROJECT_NAME}`,
    ### Files Created
    - CLAUDE.md (project root): project instructions, read automatically every session
    - context-guard/SESSION_LOG.md: session history
-   - context-guard/TASK_REGISTRY.md: LIVE task list (every task not yet finished)
-   - context-guard/TASK_REGISTRY_COMPLETED.md: COMPLETED task list (every finished task, with its tested status and proof)
+   - context-guard/TO_DO_LIST.md: to do list (every task not yet finished)
+   - context-guard/DONE_LIST.md: done list (every finished task, with its tested status and proof)
    - context-guard/DECISIONS.md: architectural decisions register (with Category field)
    - context-guard/LEARNED_BEHAVIOUR.md: tactical knowledge / platform gotchas log
    - context-guard/COMMENTS.md: user comments log
@@ -99,7 +99,7 @@ If the project-root `CLAUDE.md` still contains the placeholder `{PROJECT_NAME}`,
 
    ### Next Steps
    - Type /start at the beginning of every session for full context recovery
-   - Type /save whenever you want a save point; Context Guard files are written only then and at /end (the two task lists are kept current as work happens)
+   - Type /save whenever you want a save point; Context Guard files are written only then and at /end (the two lists are kept current as work happens)
    - Type /audit at any time to verify integrity
    - Type /end when you're done for the day (saves everything in full)
 
@@ -122,13 +122,13 @@ The ledgers are rotated: each main file holds ONLY the last 5 sessions' content 
 0.5. **`CONTEXT_GUARD_UPDATE.md`, if it exists in CCG_ROOT.** A note left when Context Guard itself was updated in this project: what changed, which files, and what to do next. Read it in full, surface it in the Step 4 summary under `🛠 Context Guard was updated`, and do what it asks before other work. It says itself when it may be deleted.
 1. `CLAUDE.md` (project root): project rules and architecture. Parse the `## Custom Context Files` section for any project-specific files to load.
 2. `SESSION_LOG.md`: the last 5 sessions
-3. `TASK_REGISTRY.md`: the LIVE task list. Read ALL of it, every row: it is the one list of tasks not yet finished, and nothing on it is ever old enough to skip. Do NOT read `TASK_REGISTRY_COMPLETED.md` or any archive page at session start.
+3. `TO_DO_LIST.md`: the to do list. Read ALL of it, every row: it is the one list of tasks not yet finished, and nothing on it is ever old enough to skip. Do NOT read `DONE_LIST.md` or any archive page at session start.
 4. `DECISIONS.md`: recent decisions in full, **plus the `## Index of archived decisions`**. Never contradict these.
 5. `LEARNED_BEHAVIOUR.md`: recent entries in full, **plus the `## Index of archived LBs`** (if present; skip if not initialised yet)
 6. `COMMENTS.md`: user's verbatim comments, check for unactioned ones
 7. `FEATURE_LIST.json`: QA pass/fail tracker (manually-verified features, NOT task-completion mirror)
 
-**A project not yet upgraded.** If CCG_ROOT is not a `context-guard/` folder (Step 0 found an older layout), or `TASK_REGISTRY_COMPLETED.md` does not exist (the old single task list), this project is on an older Context Guard. Read `TASK_REGISTRY.md` in full as it stands, including any backlog or carried sections. Then, before any other work, put this to the user by AskUserQuestion: Context Guard now keeps all its files in one `context-guard/` folder (archives in their own folder inside it) and keeps two task lists, LIVE (every task not yet finished) and COMPLETED (every finished task, with whether and how it was tested); do they want this project upgraded straight away, or wait? If they say upgrade, follow `templates/UPGRADE.md` (in CCG_ROOT, or in the Context Guard repo). If they say wait, carry on with the project as it is and ask again at the next `/start`.
+**A project not yet upgraded.** If CCG_ROOT is not a `context-guard/` folder (Step 0 found an older layout), or there is no `TO_DO_LIST.md` (the project still has the old single task list, `TASK_REGISTRY.md`), this project is on an older Context Guard. Read the old `TASK_REGISTRY.md` in full as it stands, including any backlog or carried sections. Then, before any other work, put this to the user by AskUserQuestion: Context Guard now keeps all its files in one `context-guard/` folder (archives in their own folder inside it) and keeps two lists, the to do list (everything not yet done, including decisions waiting on the user) and the done list (everything finished, with whether and how it was tested); do they want this project upgraded straight away, or wait? If they say upgrade, follow `templates/UPGRADE.md` (in CCG_ROOT, or in the Context Guard repo). If they say wait, carry on with the project as it is and ask again at the next `/start`.
 
 **Archived entries are still binding.** A decision or learned behaviour that has been rotated into an archive page has NOT stopped applying; only its full text has moved. `forever-active` and `active-constraint` decisions govern from the archive exactly as they did from the main file. The one-line indexes in DECISIONS.md and LEARNED_BEHAVIOUR.md are how you find them: if an index line touches what you are about to work on, open its full text in the archive page **at that point**, not now.
 
@@ -169,7 +169,7 @@ If Step 2 found **uncommitted changes** (modified or untracked files), a previou
 
 1. **Run `git status`** to see all uncommitted and untracked files
 2. **Review the changes** by running `git diff --stat` and `git diff --cached --stat` to understand what was done
-3. **Cross-reference with the LIVE task list and SESSION_LOG.md** to identify which session produced these changes, what tasks they relate to, and confirm the work was approved (completed tasks, user-acknowledged output, etc.)
+3. **Cross-reference with the to do list and SESSION_LOG.md** to identify which session produced these changes, what tasks they relate to, and confirm the work was approved (completed tasks, user-acknowledged output, etc.)
 4. **Stage and commit** with a descriptive message summarising the orphaned work:
    ```
    git add [explicit paths]
@@ -205,8 +205,8 @@ Run the checker from the working directory (it is installed beside these command
 node .claude/tools/registry_check.js --root "<CCG_ROOT>" --session S<N>
 ```
 
-- Its first line (`Live tasks: N (W waiting on user); completed: ...`) goes in the Step 4 summary, word for word.
-- Every row it flags goes in the summary under `Task list flags`. They are fixed during the session, and `/end` must leave both lists clean.
+- Its first line (`To do: N (W waiting on user); done: ...`) goes in the Step 4 summary, word for word.
+- Every row it flags goes in the summary under `List flags`. They are fixed during the session, and `/end` must leave both lists clean.
 - Exit code 2 means the project is still on the old single list: the question in Step 1 covers it.
 - If `node` or the checker is missing, say so in the summary. Never report the lists as checked when the checker did not run.
 
@@ -227,7 +227,7 @@ Silently complete this checklist before composing the user summary. This is a se
 - Decisions revised in the last 3 sessions: [list, or "none"]
 - New learned behaviours since last /start: [list, or "none"]
 - Resume state: [Clean / Interrupted, resume from RESUME_STATE.md]
-- Task lists: [the checker's line, or "older Context Guard, upgrade question asked"]
+- The two lists: [the checker's line, or "older Context Guard, upgrade question asked"]
 
 Any non-empty recent item → surface in the user summary below. Otherwise stay silent on it. No "None" placeholders, that's noise.
 
@@ -247,10 +247,10 @@ Present a clear summary. Only include sections that have content, and omit empty
 ### Last Session ([N-1])
 [What was done]
 
-### Live Tasks
-[The checker's first line, then every LIVE row: WAITING ON USER first, then IN PROGRESS, then PENDING]
+### To Do
+[The checker's first line, then every to do list row: WAITING ON USER first, then IN PROGRESS, then PENDING]
 
-### Task list flags (only if the checker flagged rows)
+### List flags (only if the checker flagged rows)
 [Each flagged row and what is wrong with it]
 
 ### ⚠️ Recently revised (only if non-empty)

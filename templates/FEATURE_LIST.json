@@ -1,5 +1,5 @@
 {
-  "_comment": "FEATURE_LIST.json is a QA tracker, NOT a task mirror. Each entry = one user-facing feature. 'passes: true' means the user has MANUALLY VERIFIED the feature works end-to-end. Do NOT flip passes:true just because a task completed; task completion is tracked in TASK_REGISTRY.md. This file answers the question 'what has been QA'd and works?' not 'what has been built?'.",
+  "_comment": "FEATURE_LIST.json is a QA tracker, NOT a task mirror. Each entry = one user-facing feature. 'passes: true' means the user has MANUALLY VERIFIED the feature works end-to-end. Do NOT flip passes:true just because a task completed; task completion is tracked in TO_DO_LIST.md. This file answers the question 'what has been QA'd and works?' not 'what has been built?'.",
   "_format": {
     "id": "F-NNN (sequential)",
     "name": "Short feature name",

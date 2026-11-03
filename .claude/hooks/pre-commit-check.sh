@@ -1,7 +1,7 @@
 #!/bin/bash
 # Context Guard: Pre-commit reminder hook
-# Before every git commit, reminds the agent that the two task lists must already be current.
-# Only the task lists are written as work happens; every other Context Guard file waits for
+# Before every git commit, reminds the agent that the two lists must already be current.
+# Only the two lists are written as work happens; every other Context Guard file waits for
 # /save or /end, so this hook does not ask for them.
 # Runs as a PreToolUse hook on Bash commands
 
@@ -18,8 +18,8 @@ COMMAND="$INPUT"
 # 2. SECTION: Commit detection and reminder
 # Only trigger on git commit commands
 if [[ "$COMMAND" == *"git commit"* ]]; then
-  echo "PRE-COMMIT CHECK: is every task that has finished already moved from LIVE (TASK_REGISTRY.md)" >&2
-  echo "  to the top of COMPLETED (TASK_REGISTRY_COMPLETED.md), and is every new task on LIVE?" >&2
+  echo "PRE-COMMIT CHECK: is every task that has finished already moved from the to do list (TO_DO_LIST.md)" >&2
+  echo "  to the top of the done list (DONE_LIST.md), and is every new task on the to do list?" >&2
   echo "  The other Context Guard files wait for /save or /end. (A reminder only; the commit proceeds.)" >&2
 fi
 # end of 2

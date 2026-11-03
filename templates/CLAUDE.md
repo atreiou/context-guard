@@ -12,8 +12,8 @@ CLAUDE.md                        this file (the one Context Guard file in the ro
 context-guard/
   RESUME_STATE.md                in-flight state written by /save
   SESSION_LOG.md                 session history
-  TASK_REGISTRY.md               LIVE task list
-  TASK_REGISTRY_COMPLETED.md     COMPLETED task list
+  TO_DO_LIST.md                  the to do list: everything not yet done, decisions waiting on the user included
+  DONE_LIST.md                   the done list: everything finished, with its tested status and proof
   DECISIONS.md                   decisions register
   LEARNED_BEHAVIOUR.md           tactical knowledge
   COMMENTS.md                    the user's words, verbatim
@@ -31,12 +31,12 @@ Live files sit in `context-guard/`, archived ones in `context-guard/archive/`, a
 
 0. **`RESUME_STATE.md`**: In-flight state from the last /save. Read FIRST. If `Clean save: false`, resume from the In-flight section before anything else.
 1. **`SESSION_LOG.md`**: What happened in every previous session. Historical narrative.
-2. **`TASK_REGISTRY.md`** (LIVE) and **`TASK_REGISTRY_COMPLETED.md`** (COMPLETED): the project's two task lists. LIVE holds every task not yet finished and is read in full at every `/start`; COMPLETED holds every finished task, newest at the top, with its tested status and proof. CHECK LIVE before creating a task. The rules are in `## TWO TASK LISTS` below.
+2. **`TO_DO_LIST.md`** (the to do list) and **`DONE_LIST.md`** (the done list): the project's two lists. The to do list holds every task not yet finished and is read in full at every `/start`; the done list holds every finished task, newest at the top, with its tested status and proof. CHECK the to do list before creating a task. The rules are in `## THE TO DO LIST AND THE DONE LIST` below.
 3. **`DECISIONS.md`**: Every architectural decision made. NEVER contradict these without explicit approval. Each entry has a `Category:` field (forever-active, active-constraint, feature-specific, superseded).
 4. **`LEARNED_BEHAVIOUR.md`** holds tactical knowledge: platform quirks, version gotchas, non-obvious workarounds. Prevents re-discovering the same bugs every session.
 5. **`FEATURE_LIST.json`**: QA tracker. `passes: true` means manually verified end-to-end, NOT just "task complete".
 6. **`COMMENTS.md`**: User's verbatim comments from every session. SACRED. Never lose these.
-7. **`plans/`**: Archived plans from every session. `/start` does not read them; RESUME_STATE names the plan and section the next task needs, and `/audit` checks every plan against the task lists.
+7. **`plans/`**: Archived plans from every session. `/start` does not read them; RESUME_STATE names the plan and section the next task needs, and `/audit` checks every plan against the two lists.
 8. **`audits/`**: Saved audit reports with timestamps. Read the latest to check project health.
 
 ## Custom Context Files
@@ -54,41 +54,41 @@ Example: `- API_CONTRACTS.md: external API schemas the integration depends on`
 
 **Only when the user asks, with `/save` or `/end`.** The session log, comments, decisions, learned behaviour, feature list and resume state are written by `/save` (a save point mid-session) and `/end` (everything in full). Never write them on your own initiative between saves: saving constantly spends usage for nothing, which is exactly why `/save` exists. `/save` and `/end` go back through the conversation, so nothing said or decided between saves is lost.
 
-**The one exception is the two task lists.** They are updated the moment anything on them changes: a new task goes on LIVE when it is created, and a finished task moves from LIVE to the top of COMPLETED in the same turn it finishes. That touches nothing else.
+**The one exception is the two lists.** They are updated the moment anything on them changes: a new task goes on the to do list when it is created, and a finished task moves from the to do list to the top of the done list in the same turn it finishes. That touches nothing else.
 
 ## LEDGER ROTATION: THE 5-SESSION RULE
 
-Every ledger's main file holds ONLY the last 5 sessions' content. Everything older is moved, verbatim, into numbered pages in `archive/` (`archive/SESSION_LOG_page1.md`, `archive/DECISIONS_page2.md`, and so on). Archive pages are append-only and are never deleted. The two task lists are the exception, set out below.
+Every ledger's main file holds ONLY the last 5 sessions' content. Everything older is moved, verbatim, into numbered pages in `archive/` (`archive/SESSION_LOG_page1.md`, `archive/DECISIONS_page2.md`, and so on). Archive pages are append-only and are never deleted. The two lists are the exception, set out below.
 
 `/end` runs the rotation every session. `/save` does not; it only rotates a file that has clearly overgrown the window, because re-running the whole pass on every save costs context and ages nothing.
 
 **DECISIONS and LEARNED_BEHAVIOUR keep a one-line index of everything they have archived.** When an entry is moved out, a line goes into the main file's `## Index of archived decisions` / `## Index of archived LBs` section giving its ID, title, category, and which page holds it. This is what makes the rotation safe: **archiving a decision does not revoke it.** A `forever-active` or `active-constraint` decision governs from the archive exactly as it did from the main file, and the index is how a future session finds it. Without the index, the only way to keep a binding rule discoverable was to never archive it, and the file grew until it swallowed the context window at every `/start`.
 
-**The LIVE task list never rotates.** A task stays on LIVE until it finishes, however old it is, and no row is ever carried forward or archived without being checked. COMPLETED rotates only when it passes 500 rows, oldest rows first, into `archive/TASK_REGISTRY_COMPLETED_page<N>.md`.
+**The to do list never rotates.** A task stays on the to do list until it finishes, however old it is, and no row is ever carried forward or archived without being checked. The done list rotates only when it passes 500 rows, oldest rows first, into `archive/DONE_LIST_page<N>.md`.
 
 **`/start` does not read archive pages.** It reads the main files and the indexes. If an index line touches the work about to be done, the agent opens that one archive entry at that point, not at session start.
 
 ## DROPPING TASKS IS ABSOLUTELY UNACCEPTABLE
 
-Dropping tasks will result in the **complete failure of this project**. Every task you create MUST go on the LIVE list (`TASK_REGISTRY.md`) the moment it is created. If a task cannot be completed in this session, it MUST stay on LIVE as `PENDING`. If a background agent fails (rate limit, timeout, etc.), the tasks it was supposed to do MUST be put back on LIVE as `PENDING`.
+Dropping tasks will result in the **complete failure of this project**. Every task you create MUST go on the to do list (`TO_DO_LIST.md`) the moment it is created. If a task cannot be completed in this session, it MUST stay on the to do list as `PENDING`. If a background agent fails (rate limit, timeout, etc.), the tasks it was supposed to do MUST be put back on the to do list as `PENDING`.
 
-## TWO TASK LISTS: LIVE AND COMPLETED
+## THE TO DO LIST AND THE DONE LIST
 
-The project keeps exactly two task lists, and no task is kept anywhere else: no per-session task blocks, no carried or backlog sections, no separate tested list.
+The project keeps exactly two lists, and no task is kept anywhere else: no per-session task blocks, no carried or backlog sections, no separate tested list.
 
-- **LIVE, `TASK_REGISTRY.md`:** every task not yet finished, in one table under `## LIVE TASKS`. Columns `| ID | Task | Status | Updated | Notes |`. Status starts with exactly one of `PENDING`, `IN PROGRESS` or `WAITING ON USER`, followed by one plain sentence saying what is left. Updated is the session and date the row was last checked against the evidence, for example `S12 03/11/26`. IDs use `S{session}-{seq}`.
-- **COMPLETED, `TASK_REGISTRY_COMPLETED.md`:** every finished task, newest at the top, in one table under `## COMPLETED TASKS`. Columns `| ID | Task | Outcome | Tested | Proof |`. Outcome starts `DONE dd/mm/yy`, `SUPERSEDED dd/mm/yy by <id>` or `DROPPED dd/mm/yy`, and DROPPED only with the user's own words in quotation marks. Tested starts `TESTED BY USER`, `TESTED INDEPENDENTLY`, `BUILDER ONLY` or `NOT TESTED`, followed by where the record is. Proof names a path or a commit. COMPLETED is also the tested list: something already proved there is never retested unless its files have changed since.
+- **The to do list, `TO_DO_LIST.md`:** everything not yet done, in one table under `## TO DO`: tasks, and the decisions waiting on the user (a decision is not really a task, which is why the list is called the to do list). Columns `| ID | Task | Status | Updated | Notes |`. Status starts with exactly one of `PENDING`, `IN PROGRESS` or `WAITING ON USER`, followed by one plain sentence saying what is left. Updated is the session and date the row was last checked against the evidence, for example `S12 03/11/26`. IDs use `S{session}-{seq}`.
+- **The done list, `DONE_LIST.md`:** every finished task, newest at the top, in one table under `## DONE`. Columns `| ID | Task | Outcome | Tested | Proof |`. Outcome starts `DONE dd/mm/yy`, `SUPERSEDED dd/mm/yy by <id>` or `DROPPED dd/mm/yy`, and DROPPED only with the user's own words in quotation marks. Tested starts `TESTED BY USER`, `TESTED INDEPENDENTLY`, `BUILDER ONLY` or `NOT TESTED`, followed by where the record is. Proof names a path or a commit. The done list is also the tested list: something already proved there is never retested unless its files have changed since.
 
 The rules:
 
-1. **Same turn, own row.** The moment a task finishes, its row is taken off LIVE and added to the TOP of COMPLETED, in that same turn. Never saved up for `/end`, never recorded somewhere else instead. "Handed over" is not a status.
-2. **`/start` reads only LIVE, all of it**, and tells the user the checker's line: `Live tasks: N (W waiting on user)`.
+1. **Same turn, own row.** The moment a task finishes, its row is taken off the to do list and added to the TOP of the done list, in that same turn. Never saved up for `/end`, never recorded somewhere else instead. "Handed over" is not a status.
+2. **`/start` reads only the to do list, all of it**, and tells the user the checker's line: `To do: N (W waiting on user)`.
 3. **`/save` and `/end` confirm both lists are correct** with the checker, and fix or report every flagged row before finishing:
    `node .claude/tools/registry_check.js --root context-guard --session S<N>`
-4. **A handover's tasks are merged into LIVE at once**, its questions for the user included, so there is only ever one list of pending tasks. Everything else a handover explains (state, context, how things work) is not a task: the handover itself still stands and is read as a handover.
-5. **Nothing is ever deleted.** LIVE never rotates and never carries a row unchecked. COMPLETED rotates its oldest rows into `archive/` once it passes 500 rows.
+4. **A handover's tasks are merged into the to do list at once**, its questions for the user included, so there is only ever one list of pending tasks. Everything else a handover explains (state, context, how things work) is not a task: the handover itself still stands and is read as a handover.
+5. **Nothing is ever deleted.** the to do list never rotates and never carries a row unchecked. The done list rotates its oldest rows into `archive/` once it passes 500 rows.
 
-The checker flags: a LIVE status not starting with one of the three words; a LIVE row not re-checked for two sessions; "handed"; a task row outside the two tables; a COMPLETED Outcome or Tested value not in the fixed words; DONE without proof; DROPPED without the user's quoted words; COMPLETED not newest first; the same ID on both lists.
+The checker flags: a to do list status not starting with one of the three words; a to do list row not re-checked for two sessions; "handed"; a task row outside the two tables; a done list Outcome or Tested value not in the fixed words; DONE without proof; DROPPED without the user's quoted words; the done list not newest first; the same ID on both lists.
 
 ## PRESERVE USER COMMENTS: MANDATORY
 
@@ -123,12 +123,12 @@ A PreCompact hook backs up all eight Context Guard files (including LEARNED_BEHA
 
 Rate limits pause the session but do NOT trigger compaction; context stays intact while waiting. The danger is when a rate limit hits **mid-operation** (e.g. halfway through a multi-file sync or large refactor). When the session resumes, you may lose track of which steps were completed. To protect against this:
 
-1. **Keep the task lists current as you go.** They are the one Context Guard record written as work happens, so a rate limit between step 3 and step 7 of a plan does not lose the record of steps 1 to 3.
-2. **After resuming from a rate limit**, re-read the LIVE task list and RESUME_STATE.md (as of the last /save) to confirm where you left off.
+1. **Keep the two lists current as you go.** They are the one Context Guard record written as work happens, so a rate limit between step 3 and step 7 of a plan does not lose the record of steps 1 to 3.
+2. **After resuming from a rate limit**, re-read the to do list and RESUME_STATE.md (as of the last /save) to confirm where you left off.
 
 ## CONTEXT OVERFLOW PROTOCOL
 
-If the conversation is getting very long, tell the user, so they can run `/save` when they choose. Do not save on your own initiative. The task lists are already current, and `/save` writes everything else from the conversation.
+If the conversation is getting very long, tell the user, so they can run `/save` when they choose. Do not save on your own initiative. The two lists are already current, and `/save` writes everything else from the conversation.
 
 ## Project Overview
 
@@ -158,7 +158,7 @@ Commands read this section to determine git behaviour:
 
 After every approved plan is executed, archive it:
 1. Copy from `~/.claude/plans/` (where Claude Code keeps plans) to `plans/S{session}-{seq}_{description}.md`
-2. Plans are cross-referenced by `/audit` against the task lists
+2. Plans are cross-referenced by `/audit` against the two lists
 3. **`~/.claude/plans/` is shared across all projects.** Only archive plans whose content references this project by name or file paths. Skip plans belonging to other projects.
 
 ## Sync Discipline

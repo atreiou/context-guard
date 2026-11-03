@@ -110,8 +110,8 @@ cp "$SCRIPT_DIR/.claude/hooks/pre-commit-check.sh" "$TARGET/.claude/hooks/"
 cp "$SCRIPT_DIR/.claude/hooks/pre-compact-save.sh" "$TARGET/.claude/hooks/"
 # end of 4.2
 
-# 4.2.1 Copy the task list checker
-# /start, /save, /end and /audit run it to confirm the two task lists (LIVE and COMPLETED) are correct.
+# 4.2.1 Copy the list checker
+# /start, /save, /end and /audit run it to confirm the two lists (the to do list and the done list) are correct.
 echo "  Copying tools..."
 mkdir -p "$TARGET/.claude/tools"
 cp "$SCRIPT_DIR/.claude/tools/registry_check.js" "$TARGET/.claude/tools/"
@@ -127,7 +127,7 @@ else
 fi
 # end of 4.3
 
-# 4.4 Copy templates (includes LEARNED_BEHAVIOUR.md, RESUME_STATE.md and both task lists)
+# 4.4 Copy templates (includes LEARNED_BEHAVIOUR.md, RESUME_STATE.md and both lists)
 # Every Context Guard file lives in one context-guard/ folder in the project root, so the
 # templates go there too; /start builds the rest of the folder on first run.
 echo "  Copying templates..."

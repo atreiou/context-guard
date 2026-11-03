@@ -1,28 +1,34 @@
 #!/usr/bin/env node
-// registry_check.js: Context Guard's checker for a project's TWO task lists.
-//   TASK_REGISTRY.md            LIVE: every task not yet finished, in one table under "## LIVE TASKS"
-//   TASK_REGISTRY_COMPLETED.md  COMPLETED: every finished task, newest at the top, under "## COMPLETED TASKS"
+// registry_check.js: Context Guard's checker for a project's two lists.
+//   TO_DO_LIST.md   the to do list: everything not yet done (tasks, and decisions waiting on the user), under "## TO DO"
+//   DONE_LIST.md    the done list: everything finished, newest at the top, under "## DONE"
 // /start runs it and gives the user its first line; /save and /end run it and fix or report every flag; /audit reports it.
 //
 //   node .claude/tools/registry_check.js --root "<CCG_ROOT>" [--session S12]
 //
-// --root     the folder holding TASK_REGISTRY.md (CCG_ROOT). Defaults to ./context-guard when it exists,
+// --root     the folder holding the lists (CCG_ROOT). Defaults to ./context-guard when it exists,
 //            otherwise the working directory (older layouts, until the project is upgraded).
 // --session  the current session. Defaults to the newest "## Session N" in SESSION_LOG.md plus one, which is right
 //            at /start; /save and /end pass it explicitly because the current session is already logged by then.
-// Exit codes: 0 both lists clean, 1 rows need fixing, 2 the project still has the old single task list.
+// Exit codes: 0 both lists clean, 1 rows need fixing, 2 the project still has the old single task list (TASK_REGISTRY.md).
 'use strict'
 const fs = require('fs'), path = require('path')
 
 // 1. SECTION: Arguments and paths
 const argv = process.argv
 const opt = name => { const i = argv.indexOf(name); return i > 0 && i + 1 < argv.length ? argv[i + 1] : null }
+const cgDir = path.join(process.cwd(), 'context-guard')
 const ROOT = path.resolve(opt('--root') ||
-  (fs.existsSync(path.join(process.cwd(), 'context-guard', 'TASK_REGISTRY.md')) ? path.join(process.cwd(), 'context-guard') : process.cwd()))
-const LIVE_FILE = 'TASK_REGISTRY.md', DONE_FILE = 'TASK_REGISTRY_COMPLETED.md'
+  (fs.existsSync(path.join(cgDir, 'TO_DO_LIST.md')) || fs.existsSync(path.join(cgDir, 'TASK_REGISTRY.md')) ? cgDir : process.cwd()))
+const LIVE_FILE = 'TO_DO_LIST.md', DONE_FILE = 'DONE_LIST.md', OLD_FILE = 'TASK_REGISTRY.md'
+const LIVE_SECTION = 'TO DO', DONE_SECTION = 'DONE'
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r/g, '')
 if (!fs.existsSync(path.join(ROOT, LIVE_FILE))) {
-  console.log(`No ${LIVE_FILE} in ${ROOT}. Pass --root with the folder that holds the safeguard files.`)
+  if (fs.existsSync(path.join(ROOT, OLD_FILE))) {
+    console.log(`Old single task list: this project still has ${OLD_FILE} and has not been moved to the to do list and the done list yet.`)
+    process.exit(2)
+  }
+  console.log(`No ${LIVE_FILE} in ${ROOT}. Pass --root with the folder that holds the Context Guard files.`)
   process.exit(1)
 }
 // end of 1
@@ -61,13 +67,8 @@ function taskTables(file) {
 }
 // end of 3
 
-// 4. SECTION: Old single list detection
-const liveText = read(LIVE_FILE)
-const converted = /^## LIVE TASKS\s*$/m.test(liveText)
-if (!converted && !fs.existsSync(path.join(ROOT, DONE_FILE))) {
-  console.log('Old single task list: this project has not been moved to the two lists (LIVE and COMPLETED) yet.')
-  process.exit(2)
-}
+// 4. SECTION: Table heading check
+const converted = new RegExp(`^## ${LIVE_SECTION}\\s*$`, 'm').test(read(LIVE_FILE))
 // end of 4
 
 // 5. SECTION: Rows of each list
@@ -89,19 +90,19 @@ function rowsOf(file, wantSection, needCols) {
   }
   return rows
 }
-const live = rowsOf(LIVE_FILE, 'LIVE TASKS', ['id', 'task', 'status', 'updated'])
-if (!converted) flags.push(`${LIVE_FILE} has no "## LIVE TASKS" table`)
+const live = rowsOf(LIVE_FILE, LIVE_SECTION, ['id', 'task', 'status', 'updated'])
+if (!converted) flags.push(`${LIVE_FILE} has no "## ${LIVE_SECTION}" table`)
 const doneExists = fs.existsSync(path.join(ROOT, DONE_FILE))
 if (!doneExists) flags.push(`${DONE_FILE} is missing`)
-const done = doneExists ? rowsOf(DONE_FILE, 'COMPLETED TASKS', ['id', 'task', 'outcome', 'tested', 'proof']) : []
+const done = doneExists ? rowsOf(DONE_FILE, DONE_SECTION, ['id', 'task', 'outcome', 'tested', 'proof']) : []
 // end of 5
 
-// 6. SECTION: LIVE checks
+// 6. SECTION: To do list checks
 let waiting = 0
 for (const r of live) {
   const st = r.get('status'), up = r.get('updated')
   if (!/^(PENDING|IN PROGRESS|WAITING ON USER)\b/.test(st)) {
-    flags.push(`${r.at}: Status must start with PENDING, IN PROGRESS or WAITING ON USER (a finished task moves to the top of COMPLETED)`)
+    flags.push(`${r.at}: Status must start with PENDING, IN PROGRESS or WAITING ON USER (a finished item moves to the top of the done list)`)
   } else if (/^WAITING ON USER/.test(st)) waiting++
   if (/\bhanded\b/i.test(st)) flags.push(`${r.at}: Status says "handed"; give the task's real state`)
   const s = Number((up.match(/\bS(\d+)\b/) || [])[1])
@@ -110,7 +111,7 @@ for (const r of live) {
 }
 // end of 6
 
-// 7. SECTION: COMPLETED checks
+// 7. SECTION: Done list checks
 const TESTED = /^(TESTED BY USER|TESTED INDEPENDENTLY|BUILDER ONLY|NOT TESTED)\b/
 const dateKey = s => { const m = String(s).match(/(\d{2})\/(\d{2})\/(\d{2})/); return m ? Number('20' + m[3] + m[2] + m[1]) : null }
 let untested = 0, newestAbove = Infinity
@@ -128,16 +129,16 @@ for (const r of done) {
   if (/^DROPPED\b/.test(oc) && !/["“][^"”]{3,}["”]/.test(oc + ' ' + pr)) flags.push(`${r.at}: DROPPED without the user's own words in quotation marks`)
   const k = dateKey(oc)
   if (k) {
-    if (k > newestAbove) flags.push(`${r.at}: COMPLETED must be newest first (this row is newer than a row above it)`)
+    if (k > newestAbove) flags.push(`${r.at}: the done list must be newest first (this row is newer than a row above it)`)
     newestAbove = Math.min(newestAbove, k)
   }
 }
 const liveIds = new Set(live.map(r => r.id).filter(Boolean))
-for (const r of done) if (r.id && liveIds.has(r.id)) flags.push(`${r.at}: the same ID is still on LIVE`)
+for (const r of done) if (r.id && liveIds.has(r.id)) flags.push(`${r.at}: the same ID is still on the to do list`)
 // end of 7
 
 // 8. SECTION: Report
-console.log(`Live tasks: ${live.length} (${waiting} waiting on user); completed: ${done.length} (${untested} not independently tested)` +
+console.log(`To do: ${live.length} (${waiting} waiting on user); done: ${done.length} (${untested} not independently tested)` +
   (flags.length ? `; ${flags.length} ${flags.length === 1 ? 'row needs' : 'rows need'} fixing` : '; both lists clean'))
 for (const f of flags) console.log(' - ' + f)
 process.exit(flags.length ? 1 : 0)

@@ -1,5 +1,5 @@
 ---
-description: "Type /audit to verify project integrity. Checks all safeguard files, git state, uncommitted work, plan cross-references, archive index integrity, and the two task lists."
+description: "Type /audit to verify project integrity. Checks all safeguard files, git state, uncommitted work, plan cross-references, archive index integrity, and the two lists."
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 
@@ -14,9 +14,9 @@ Execute ALL checks below and report findings.
 CCG_ROOT is the folder that holds the Context Guard files: in the current layout, the `context-guard/` folder in the project root (with `archive/`, `plans/`, `audits/`, `backups/` and `templates/` inside it). Find it in this order and stop at the first match:
 
 0. **Pointer file:** `CCG_LOCATION.md` in the working directory names CCG_ROOT directly. Trust it.
-1. **`./context-guard/`**, holding `TASK_REGISTRY.md`.
-2. **One level down**, when the working directory is a parent folder: `*/context-guard/TASK_REGISTRY.md`. If several projects match, ask the user which one.
-3. **An older layout**, until the project is upgraded: `find . -maxdepth 4 -name "TASK_REGISTRY.md" -not -path "*/templates/*" -not -path "*/archive/*" -not -path "*backups*"`; CCG_ROOT is the folder holding the match.
+1. **`./context-guard/`**, holding `TO_DO_LIST.md`.
+2. **One level down**, when the working directory is a parent folder: `*/context-guard/TO_DO_LIST.md`. If several projects match, ask the user which one.
+3. **An older layout**, until the project is upgraded: `find . -maxdepth 4 \( -name "TO_DO_LIST.md" -o -name "TASK_REGISTRY.md" \) -not -path "*/templates/*" -not -path "*/archive/*" -not -path "*backups*"`; CCG_ROOT is the folder holding the match.
 4. **None found:** warn "No Context Guard files found. Run /start first." and stop.
 
 **All file paths below are relative to CCG_ROOT** (archive pages in `archive/`; on an older layout, wherever that project keeps them). `CLAUDE.md` means the project's own, in the project root. Run git from the project root.
@@ -30,16 +30,16 @@ CCG_ROOT is the folder that holds the Context Guard files: in the current layout
 ## 2. Task Lists Integrity
 - Run the checker: `node .claude/tools/registry_check.js --root "<CCG_ROOT>"`
 - Report its first line, and every row it flags as a **WARNING** (a row outside the two tables, or the same ID on both lists, is **CRITICAL**: a task is being tracked in two places or none)
-- Count LIVE rows by status (PENDING / IN PROGRESS / WAITING ON USER) and COMPLETED rows by Outcome and by Tested
+- Count to do list rows by status (PENDING / IN PROGRESS / WAITING ON USER) and done list rows by Outcome and by Tested
 - Check for stale IN PROGRESS rows (started but never finished)
-- Check that no other safeguard file is keeping its own list of open tasks (a "pending" or "backlog" table in SESSION_LOG, RESUME_STATE or a handover that is not also on LIVE) = **WARNING, second task list**
+- Check that no other safeguard file is keeping its own list of open tasks (a "pending" or "backlog" table in SESSION_LOG, RESUME_STATE or a handover that is not also on the to do list) = **WARNING, second task list**
 - Cross-reference with `FEATURE_LIST.json`. Any features without tasks?
-- **Old single list** (exit code 2, no `TASK_REGISTRY_COMPLETED.md`): report as **INFO**, "the two-list build is still waiting on the user", and audit the old file as it stands
+- **Old single list** (exit code 2: no `TO_DO_LIST.md`, only the old `TASK_REGISTRY.md`): report as **INFO**, "the upgrade is still waiting on the user", and audit the old file as it stands
 
 ## 3. Plan Cross-Reference
 - Read ALL plan files from `plans/` directory
-- For EVERY task/step in every plan, verify it is on LIVE or COMPLETED
-- If a task from a plan is on neither, **check the archive pages** (`archive/TASK_REGISTRY_COMPLETED_page*.md`, and `archive/TASK_REGISTRY_page*.md` from before the two lists) before flagging, since it may have been completed and archived
+- For EVERY task/step in every plan, verify it is on the to do list or the done list
+- If a task from a plan is on neither, **check the archive pages** (`archive/DONE_LIST_page*.md`, and `archive/TASK_REGISTRY_page*.md` from before the two lists) before flagging, since it may have been completed and archived
 - Flag: tasks in plans on neither list AND NOT in any archive = **DROPPED TASK (CRITICAL)**
 - Flag: tasks on either list with no plan, decision, or comment source = **UNEXPLAINED TASK**
 
@@ -53,7 +53,7 @@ CCG_ROOT is the folder that holds the Context Guard files: in the current layout
 - Verify decision count
 - Check for contradictions between decisions
 - **Classification sanity check:** flag any decision missing a `Category:` field. Valid values: `forever-active`, `active-constraint`, `feature-specific`, `superseded`. Report missing categories as **WARNING: needs classification**.
-- **Cross-reference check:** for any decision with an `Affects:` field listing task IDs, verify those tasks exist on LIVE, on COMPLETED, or in an archive page. Stale task references = **INFO: update the Affects field**.
+- **Cross-reference check:** for any decision with an `Affects:` field listing task IDs, verify those tasks exist on the to do list, on the done list, or in an archive page. Stale task references = **INFO: update the Affects field**.
 
 ## 5.5 Archive Index Integrity
 
@@ -90,8 +90,8 @@ Also check that no ID is missing from the sequence across main file + all archiv
   - `CLAUDE.md`
   - `RESUME_STATE.md`
   - `SESSION_LOG.md`
-  - `TASK_REGISTRY.md`
-  - `TASK_REGISTRY_COMPLETED.md` (absent only in a project still on the old single list, which section 2 reports)
+  - `TO_DO_LIST.md`
+  - `DONE_LIST.md` (absent only in a project still on the old single list, which section 2 reports)
   - `DECISIONS.md`
   - `LEARNED_BEHAVIOUR.md`
   - `COMMENTS.md`
