@@ -1,5 +1,5 @@
 ---
-description: "Type /audit to verify project integrity. Checks all safeguard files, git state, uncommitted work, plan cross-references, archive index integrity, and the task registry."
+description: "Type /audit to verify project integrity. Checks all safeguard files, git state, uncommitted work, plan cross-references, archive index integrity, and the two task lists."
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 
@@ -30,18 +30,21 @@ Safeguard files may not be in the current working directory; they could be in a 
 - Run `git log origin/main..HEAD --oneline`. Any unpushed commits?
 - **CRITICAL** if anything is uncommitted or unpushed
 
-## 2. Task Registry Integrity
-- Read `TASK_REGISTRY.md`
-- Count tasks by status (✅ done / ⏳ pending / 🔄 in-progress / ❌ blocked / 🔁 re-queued)
-- Check for stale in-progress tasks (started but never completed)
+## 2. Task Lists Integrity
+- Run the checker: `node .claude/tools/registry_check.js --root "<CCG_ROOT>"`
+- Report its first line, and every row it flags as a **WARNING** (a row outside the two tables, or the same ID on both lists, is **CRITICAL**: a task is being tracked in two places or none)
+- Count LIVE rows by status (PENDING / IN PROGRESS / WAITING ON USER) and COMPLETED rows by Outcome and by Tested
+- Check for stale IN PROGRESS rows (started but never finished)
+- Check that no other safeguard file is keeping its own list of open tasks (a "pending" or "backlog" table in SESSION_LOG, RESUME_STATE or a handover that is not also on LIVE) = **WARNING, second task list**
 - Cross-reference with `FEATURE_LIST.json`. Any features without tasks?
+- **Old single list** (exit code 2, no `TASK_REGISTRY_COMPLETED.md`): report as **INFO**, "the two-list build is still waiting on the user", and audit the old file as it stands
 
 ## 3. Plan Cross-Reference
 - Read ALL plan files from `plans/` directory
-- For EVERY task/step in every plan, verify it exists in TASK_REGISTRY
-- If a task from a plan is NOT in the current registry, **check archive pages** (`TASK_REGISTRY_page*.md`) before flagging, since it may have been completed and archived
-- Flag: tasks in plans NOT in registry AND NOT in any archive = **DROPPED TASK (CRITICAL)**
-- Flag: tasks in registry with no plan, decision, or comment source = **UNEXPLAINED TASK**
+- For EVERY task/step in every plan, verify it is on LIVE or COMPLETED
+- If a task from a plan is on neither, **check the archive pages** (`TASK_REGISTRY_COMPLETED_page*.md`, and `TASK_REGISTRY_page*.md` from before the two lists) before flagging, since it may have been completed and archived
+- Flag: tasks in plans on neither list AND NOT in any archive = **DROPPED TASK (CRITICAL)**
+- Flag: tasks on either list with no plan, decision, or comment source = **UNEXPLAINED TASK**
 
 ## 4. User Comments
 - Read `COMMENTS.md`
@@ -53,7 +56,7 @@ Safeguard files may not be in the current working directory; they could be in a 
 - Verify decision count
 - Check for contradictions between decisions
 - **Classification sanity check:** flag any decision missing a `Category:` field. Valid values: `forever-active`, `active-constraint`, `feature-specific`, `superseded`. Report missing categories as **WARNING: needs classification**.
-- **Cross-reference check:** for any decision with an `Affects:` field listing task IDs, verify those tasks exist in TASK_REGISTRY (or its archives). Stale task references = **INFO: update the Affects field**.
+- **Cross-reference check:** for any decision with an `Affects:` field listing task IDs, verify those tasks exist on LIVE, on COMPLETED, or in an archive page. Stale task references = **INFO: update the Affects field**.
 
 ## 5.5 Archive Index Integrity
 
@@ -91,6 +94,7 @@ Also check that no ID is missing from the sequence across main file + all archiv
   - `RESUME_STATE.md`
   - `SESSION_LOG.md`
   - `TASK_REGISTRY.md`
+  - `TASK_REGISTRY_COMPLETED.md` (absent only in a project still on the old single list, which section 2 reports)
   - `DECISIONS.md`
   - `LEARNED_BEHAVIOUR.md`
   - `COMMENTS.md`

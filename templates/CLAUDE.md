@@ -6,7 +6,7 @@
 
 0. **`RESUME_STATE.md`**: In-flight state from the last /save. Read FIRST. If `Clean save: false`, resume from the In-flight section before anything else.
 1. **`SESSION_LOG.md`**: What happened in every previous session. Historical narrative.
-2. **`TASK_REGISTRY.md`**: Every task ever created, with status. CHECK before creating new tasks. Column format: `| ID | Timestamp | Task | Status | Notes |`. IDs use `S{session}-{seq}` format. Status uses emoji: ✅ done, 🔄 in-progress, ⏳ pending, ❌ blocked, 🔁 re-queued.
+2. **`TASK_REGISTRY.md`** (LIVE) and **`TASK_REGISTRY_COMPLETED.md`** (COMPLETED): the project's two task lists. LIVE holds every task not yet finished and is read in full at every `/start`; COMPLETED holds every finished task, newest at the top, with its tested status and proof. CHECK LIVE before creating a task. The rules are in `## TWO TASK LISTS` below.
 3. **`DECISIONS.md`**: Every architectural decision made. NEVER contradict these without explicit approval. Each entry has a `Category:` field (forever-active, active-constraint, feature-specific, superseded).
 4. **`LEARNED_BEHAVIOUR.md`** holds tactical knowledge: platform quirks, version gotchas, non-obvious workarounds. Prevents re-discovering the same bugs every session.
 5. **`FEATURE_LIST.json`**: QA tracker. `passes: true` means manually verified end-to-end, NOT just "task complete".
@@ -27,21 +27,39 @@ Example: `- API_CONTRACTS.md: external API schemas the integration depends on`
 
 ## LEDGER ROTATION: THE 5-SESSION RULE
 
-Every ledger's main file holds ONLY the last 5 sessions' content. Everything older is moved, verbatim, into numbered archive pages (`SESSION_LOG_page1.md`, `TASK_REGISTRY_page2.md`, and so on). Archive pages are append-only and are never deleted.
+Every ledger's main file holds ONLY the last 5 sessions' content. Everything older is moved, verbatim, into numbered archive pages (`SESSION_LOG_page1.md`, `DECISIONS_page2.md`, and so on). Archive pages are append-only and are never deleted. The two task lists are the exception, set out below.
 
 `/end` runs the rotation every session. `/save` does not; it only rotates a file that has clearly overgrown the window, because re-running the whole pass on every mid-session checkpoint costs context and ages nothing.
 
 **DECISIONS and LEARNED_BEHAVIOUR keep a one-line index of everything they have archived.** When an entry is moved out, a line goes into the main file's `## Index of archived decisions` / `## Index of archived LBs` section giving its ID, title, category, and which page holds it. This is what makes the rotation safe: **archiving a decision does not revoke it.** A `forever-active` or `active-constraint` decision governs from the archive exactly as it did from the main file, and the index is how a future session finds it. Without the index, the only way to keep a binding rule discoverable was to never archive it, and the file grew until it swallowed the context window at every `/start`.
 
-**A pending task is never silently dropped by rotation.** A `⏳` row older than the window must be explicitly kept in a `## Live backlog` section, consolidated into another tracked item (annotated and archived), or archived with its deferral tag intact. Letting one vanish in a trim is a project failure.
+**The LIVE task list never rotates.** A task stays on LIVE until it finishes, however old it is, and no row is ever carried forward or archived without being checked. COMPLETED rotates only when it passes 500 rows, oldest rows first, into `TASK_REGISTRY_COMPLETED_page<N>.md`.
 
 **`/start` does not read archive pages.** It reads the main files and the indexes. If an index line touches the work about to be done, the agent opens that one archive entry at that point, not at session start.
 
 ## DROPPING TASKS IS ABSOLUTELY UNACCEPTABLE
 
-Dropping tasks will result in the **complete failure of this project**. Every task you create MUST be logged in `TASK_REGISTRY.md` with a timestamp. If a task cannot be completed in this session, it MUST remain in the registry as `pending`. If a background agent fails (rate limit, timeout, etc.), the tasks it was supposed to do MUST be re-logged as `pending` in the registry.
+Dropping tasks will result in the **complete failure of this project**. Every task you create MUST go on the LIVE list (`TASK_REGISTRY.md`) the moment it is created. If a task cannot be completed in this session, it MUST stay on LIVE as `PENDING`. If a background agent fails (rate limit, timeout, etc.), the tasks it was supposed to do MUST be put back on LIVE as `PENDING`.
 
-Before ending any session or hitting context limits, UPDATE the session log and task registry.
+Before ending any session or hitting context limits, UPDATE the session log and both task lists.
+
+## TWO TASK LISTS: LIVE AND COMPLETED
+
+The project keeps exactly two task lists, and no task is kept anywhere else: no per-session task blocks, no carried or backlog sections, no separate tested list.
+
+- **LIVE, `TASK_REGISTRY.md`:** every task not yet finished, in one table under `## LIVE TASKS`. Columns `| ID | Task | Status | Updated | Notes |`. Status starts with exactly one of `PENDING`, `IN PROGRESS` or `WAITING ON USER`, followed by one plain sentence saying what is left. Updated is the session and date the row was last checked against the evidence, for example `S12 03/11/26`. IDs use `S{session}-{seq}`.
+- **COMPLETED, `TASK_REGISTRY_COMPLETED.md`:** every finished task, newest at the top, in one table under `## COMPLETED TASKS`. Columns `| ID | Task | Outcome | Tested | Proof |`. Outcome starts `DONE dd/mm/yy`, `SUPERSEDED dd/mm/yy by <id>` or `DROPPED dd/mm/yy`, and DROPPED only with the user's own words in quotation marks. Tested starts `TESTED BY USER`, `TESTED INDEPENDENTLY`, `BUILDER ONLY` or `NOT TESTED`, followed by where the record is. Proof names a path or a commit. COMPLETED is also the tested list: something already proved there is never retested unless its files have changed since.
+
+The rules:
+
+1. **Same turn, own row.** The moment a task finishes, its row is taken off LIVE and added to the TOP of COMPLETED, in that same turn. Never saved up for `/end`, never recorded somewhere else instead. "Handed over" is not a status.
+2. **`/start` reads only LIVE, all of it**, and tells the user the checker's line: `Live tasks: N (W waiting on user)`.
+3. **`/save` and `/end` confirm both lists are correct** with the checker, and fix or report every flagged row before finishing:
+   `node .claude/tools/registry_check.js --root "<this folder>" --session S<N>`
+4. **A handover's tasks are merged into LIVE at once**, its questions for the user included, so there is only ever one list of pending tasks. Everything else a handover explains (state, context, how things work) is not a task: the handover itself still stands and is read as a handover.
+5. **Nothing is ever deleted.** LIVE never rotates and never carries a row unchecked. COMPLETED rotates its oldest rows into `TASK_REGISTRY_COMPLETED_page<N>.md` once it passes 500 rows.
+
+The checker flags: a LIVE status not starting with one of the three words; a LIVE row not re-checked for two sessions; "handed"; a task row outside the two tables; a COMPLETED Outcome or Tested value not in the fixed words; DONE without proof; DROPPED without the user's quoted words; COMPLETED not newest first; the same ID on both lists.
 
 ## PRESERVE USER COMMENTS: MANDATORY
 
@@ -53,8 +71,8 @@ The user can call `/audit` at ANY moment to verify your work. Every task must be
 
 ## AUTO-CHECKPOINT PROTOCOL
 
-Update safeguard files (SESSION_LOG.md, TASK_REGISTRY.md, COMMENTS.md) IMMEDIATELY after:
-- Any task status change (completed/failed/blocked)
+Update safeguard files (SESSION_LOG.md, the two task lists, COMMENTS.md) IMMEDIATELY after:
+- Any task status change (a finished task moves from LIVE to the top of COMPLETED in that same turn)
 - Any new decision is made
 - Every 3-4 user messages (batch update)
 - Before any potentially long operation (testing, uploads, large code generation)
@@ -91,8 +109,8 @@ For best results, also follow the AUTO-CHECKPOINT PROTOCOL above to keep safegua
 Rate limits pause the session but do NOT trigger compaction; context stays intact while waiting. The danger is when a rate limit hits **mid-operation** (e.g. halfway through a multi-file sync or large refactor). When the session resumes, you may lose track of which steps were completed. To protect against this:
 
 1. **Before any multi-step operation** (syncing to multiple repos, batch edits, large refactors), update safeguard files FIRST
-2. **After resuming from a rate limit**, re-read TASK_REGISTRY.md and SESSION_LOG.md to confirm where you left off
-3. **Mark tasks as done individually** as you complete them, not in a batch at the end. A rate limit between step 3 and step 7 of a plan should not lose the record of steps 1 to 3
+2. **After resuming from a rate limit**, re-read the LIVE task list (TASK_REGISTRY.md) and SESSION_LOG.md to confirm where you left off
+3. **Move each task to COMPLETED the moment it finishes**, not in a batch at the end. A rate limit between step 3 and step 7 of a plan should not lose the record of steps 1 to 3
 
 ## CONTEXT OVERFLOW PROTOCOL
 
@@ -103,7 +121,7 @@ If the conversation is getting very long:
 
 ## SAVE FREQUENCY
 
-After every significant block of work (completing a task, fixing a bug, making a decision, receiving user feedback), append to SESSION_LOG.md and update TASK_REGISTRY.md. The /end command is a CLEAN save, but incremental saves should happen throughout the session. The user can also run /save at any time to trigger an explicit mid-session checkpoint. If context is lost mid-session, the safeguard files should contain 90%+ of what happened. When saving, always capture: (1) what was done, (2) what is in flight right now, (3) what the user wants next, and (4) any errors hit and how they were resolved. These four elements make the difference between a useful handoff and a stale status update.
+After every significant block of work (completing a task, fixing a bug, making a decision, receiving user feedback), append to SESSION_LOG.md and update the two task lists. The /end command is a CLEAN save, but incremental saves should happen throughout the session. The user can also run /save at any time to trigger an explicit mid-session checkpoint. If context is lost mid-session, the safeguard files should contain 90%+ of what happened. When saving, always capture: (1) what was done, (2) what is in flight right now, (3) what the user wants next, and (4) any errors hit and how they were resolved. These four elements make the difference between a useful handoff and a stale status update.
 
 ## Project Overview
 

@@ -18,7 +18,7 @@ COMMAND="$INPUT"
 if [[ "$COMMAND" == *"git commit"* ]]; then
   echo "PRE-COMMIT CHECK: Before committing, ensure you have:" >&2
   echo "  1. Logged any new user comments to COMMENTS.md" >&2
-  echo "  2. Updated TASK_REGISTRY.md with any new/completed tasks" >&2
+  echo "  2. Put new tasks on LIVE (TASK_REGISTRY.md) and moved finished ones to the top of TASK_REGISTRY_COMPLETED.md" >&2
   echo "  3. Updated SESSION_LOG.md if this is a significant milestone" >&2
   echo "  4. Logged any decisions to DECISIONS.md, each with a Category: field" >&2
   echo "  5. Logged any gotcha or >15min debug to LEARNED_BEHAVIOUR.md" >&2

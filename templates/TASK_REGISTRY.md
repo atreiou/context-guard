@@ -1,42 +1,28 @@
-# TASK_REGISTRY.md: {PROJECT_NAME} Permanent Task Log
-# EVERY TASK EVER CREATED MUST BE LOGGED HERE WITH A TIMESTAMP
-# DROPPING TASKS IS ABSOLUTELY UNACCEPTABLE AND WILL RESULT IN PROJECT FAILURE
-# CHECK THIS FILE BEFORE CREATING NEW TASKS. DO NOT DUPLICATE
+# TASK_REGISTRY.md: {PROJECT_NAME} LIVE Task List
+# One of the project's TWO task lists. This one holds every task that is NOT yet finished, and nothing else.
+# Every finished task lives in TASK_REGISTRY_COMPLETED.md, newest at the top, with its tested status and proof.
+# DROPPING A TASK IS A PROJECT FAILURE. CHECK THIS LIST BEFORE CREATING A TASK. DO NOT DUPLICATE.
 #
-# Status: ✅ done | 🔄 in-progress | ⏳ pending | ❌ blocked | 🔁 re-queued (failed, needs retry)
+# Columns: | ID | Task | Status | Updated | Notes |
+#   ID       S{session}-{seq}, for example S1-001, S2-003
+#   Status   starts with exactly one of PENDING, IN PROGRESS or WAITING ON USER, then one plain sentence of what is left
+#   Updated  the session and date the row was last checked against the evidence, for example S12 03/11/26
+#   Notes    may hold `Governed by: D-xx, D-yy` (decisions that constrain the task) and `Blocked on: <id>`
 #
-# Column format: | ID | Timestamp | Task | Status | Notes |
-# ID = S{session}-{seq} (e.g. S1-001, S2-003). Timestamp = YYYY-MM-DD.
+# The rules:
+#   1. The moment a task finishes, its row comes off this list and goes to the TOP of TASK_REGISTRY_COMPLETED.md,
+#      in that same turn. Never saved up for /end, never recorded somewhere else instead. "Handed over" is not a status.
+#   2. No task lives anywhere else: no per-session task blocks, no carried or backlog sections, no separate tested list.
+#   3. /start reads ALL of this list. /save and /end run the checker and fix or report every flagged row.
+#   4. A handover's open tasks, and its questions for the user, are merged into this list at once. The handover
+#      itself still stands for everything else it explains.
+#   5. This list never rotates, and no row is carried forward or archived without being checked.
 #
-# Notes may include:
-#   - `Governed by: D-xx, D-yy`  for decisions that constrain this task's implementation (strongly recommended for architectural work)
-#   - `Blocked on: T-zz`         for other tasks this depends on
-#   - On completion, amend with: `Files: path1, path2 | Approach: one-sentence pattern/library | Governed by: D-xx`
-#   This makes the archived registry a queryable knowledge base, not dead rows.
-#
-# When a background agent fails (rate limit, timeout, etc.), its tasks MUST be re-logged as pending
-# When a session ends, ALL incomplete tasks MUST remain here with their current status
-#
-# ROTATION: done tasks older than the last 5 sessions archive to TASK_REGISTRY_page1.md, etc.
-# A PENDING row is NEVER silently dropped. One older than the window must be either kept in the
-# Live backlog below, consolidated into another tracked item (annotated `consolidated: <id>` and
-# archived), or archived with its deferral tag intact.
-#
-# 📁 Archives: (none yet)
+# Checker: node .claude/tools/registry_check.js --root "<folder holding this file>"
 
 ---
 
-## Live backlog
+## LIVE TASKS
 
-Pending tasks that have outlived the 5-session window but are still genuinely actionable.
-They sit here so they stay visible without pretending to belong to a recent session.
-
-| ID | Timestamp | Task | Status | Notes |
-|----|-----------|------|--------|-------|
-
----
-
-## Session 1 ({DATE})
-
-| ID | Timestamp | Task | Status | Notes |
-|----|-----------|------|--------|-------|
+| ID | Task | Status | Updated | Notes |
+|----|------|--------|---------|-------|

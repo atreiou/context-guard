@@ -1,5 +1,5 @@
 ---
-description: "Type /start at the beginning of every session. Reads the safeguard files (last-5-sessions window only), recovers context, and summarises project state."
+description: "Type /start at the beginning of every session. Reads the safeguard files (last-5-sessions window, plus the whole LIVE task list), checks the two task lists, recovers context, and summarises project state."
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 
@@ -52,6 +52,7 @@ If Step 0 found a valid CLAUDE.md:
    - Copy `templates/CLAUDE.md` → `CLAUDE.md` (project root)
    - Copy `templates/SESSION_LOG.md` → `SESSION_LOG.md`
    - Copy `templates/TASK_REGISTRY.md` → `TASK_REGISTRY.md`
+   - Copy `templates/TASK_REGISTRY_COMPLETED.md` → `TASK_REGISTRY_COMPLETED.md`
    - Copy `templates/DECISIONS.md` → `DECISIONS.md`
    - Copy `templates/COMMENTS.md` → `COMMENTS.md`
    - Copy `templates/FEATURE_LIST.json` → `FEATURE_LIST.json`
@@ -97,7 +98,8 @@ If Step 0 found a valid CLAUDE.md:
    ### Files Created
    - CLAUDE.md: project instructions (auto-read every session)
    - SESSION_LOG.md: session history
-   - TASK_REGISTRY.md: task tracker
+   - TASK_REGISTRY.md: LIVE task list (every task not yet finished)
+   - TASK_REGISTRY_COMPLETED.md: COMPLETED task list (every finished task, with its tested status and proof)
    - DECISIONS.md: architectural decisions register (with Category field)
    - LEARNED_BEHAVIOUR.md: tactical knowledge / platform gotchas log
    - COMMENTS.md: user comments log
@@ -129,11 +131,13 @@ The ledgers are rotated: each main file holds ONLY the last 5 sessions' content 
 0. **`RESUME_STATE.md`, READ THIS FIRST.** This file holds only the in-flight state from the last /save. If `Clean save: false`, the previous session was interrupted mid-task, and the In-flight and Next step sections are your handoff note. Surface this in the Step 4 summary under a `🔄 Resume from last session` heading so the user knows you picked it up. If `Clean save: true`, the previous session ended cleanly and RESUME_STATE is empty, so the next-session intent lives in SESSION_LOG's newest "Next step".
 1. `CLAUDE.md`: project rules and architecture. Parse the `## Custom Context Files` section for any project-specific files to load.
 2. `SESSION_LOG.md`: the last 5 sessions
-3. `TASK_REGISTRY.md`: live tasks, find the PENDING ones
+3. `TASK_REGISTRY.md`: the LIVE task list. Read ALL of it, every row: it is the one list of tasks not yet finished, and nothing on it is ever old enough to skip. Do NOT read `TASK_REGISTRY_COMPLETED.md` or any task archive page at session start.
 4. `DECISIONS.md`: recent decisions in full, **plus the `## Index of archived decisions`**. Never contradict these.
 5. `LEARNED_BEHAVIOUR.md`: recent entries in full, **plus the `## Index of archived LBs`** (if present; skip if not initialised yet)
 6. `COMMENTS.md`: user's verbatim comments, check for unactioned ones
 7. `FEATURE_LIST.json`: QA pass/fail tracker (manually-verified features, NOT task-completion mirror)
+
+**A project still on the old single task list.** If `TASK_REGISTRY_COMPLETED.md` does not exist, this project has not yet moved to the two task lists (LIVE and COMPLETED). Read `TASK_REGISTRY.md` in full as it stands, including any backlog or carried sections. Then, before any other work, put this to the user by AskUserQuestion: Context Guard now keeps two task lists, LIVE (every task not yet finished) and COMPLETED (every finished task, with whether and how it was tested); do they want this project's lists built straight away, or wait? If they say build, follow `templates/UPGRADE_TWO_TASK_LISTS.md` (in CCG_ROOT, or in the Context Guard repo). If they say wait, carry on with the old list as it is and ask again at the next `/start`.
 
 **Archived entries are still binding.** A decision or learned behaviour that has been rotated into an archive page has NOT stopped applying; only its full text has moved. `forever-active` and `active-constraint` decisions govern from the archive exactly as they did from the main file. The one-line indexes in DECISIONS.md and LEARNED_BEHAVIOUR.md are how you find them: if an index line touches what you are about to work on, open its full text in the archive page **at that point**, not now.
 
@@ -174,7 +178,7 @@ If Step 2 found **uncommitted changes** (modified or untracked files), a previou
 
 1. **Run `git status`** to see all uncommitted and untracked files
 2. **Review the changes** by running `git diff` and `git diff --cached` to understand what was done
-3. **Cross-reference with TASK_REGISTRY.md and SESSION_LOG.md** to identify which session produced these changes, what tasks they relate to, and confirm the work was approved (completed tasks, user-acknowledged output, etc.)
+3. **Cross-reference with the LIVE task list and SESSION_LOG.md** to identify which session produced these changes, what tasks they relate to, and confirm the work was approved (completed tasks, user-acknowledged output, etc.)
 4. **Stage and commit** with a descriptive message summarising the orphaned work:
    ```
    git add [explicit paths]
@@ -195,6 +199,19 @@ If the working tree is clean and all commits are pushed, skip this step.
 
 The new session number = last session in SESSION_LOG.md + 1.
 
+## Step 3.5: Check the Task Lists
+
+Run the checker from the working directory (it is installed beside these commands, in `.claude/tools/`):
+
+```bash
+node .claude/tools/registry_check.js --root "<CCG_ROOT>" --session S<N>
+```
+
+- Its first line (`Live tasks: N (W waiting on user); completed: ...`) goes in the Step 4 summary, word for word.
+- Every row it flags goes in the summary under `Task list flags`. They are fixed during the session, and `/end` must leave both lists clean.
+- Exit code 2 means the project is still on the old single list: the question in Step 1 covers it.
+- If `node` or the checker is missing, say so in the summary. Never report the lists as checked when the checker did not run.
+
 **Plan cross-referencing is NOT done here.** Reading plan files at session start costs thousands of tokens for a check that is only occasionally needed, and RESUME_STATE's "Next step" already names the exact plan file and section the first task requires. The full plan-versus-registry sweep, including DROPPED TASK detection across every plan and every archive page, lives in `/audit` §3, which reads ALL plans rather than a sample. Run `/audit` when you want that check; do not reproduce it here.
 
 ## Step 4: Summarise
@@ -212,6 +229,7 @@ Silently complete this checklist before composing the user summary. This is a se
 - Decisions revised in the last 3 sessions: [list, or "none"]
 - New learned behaviours since last /start: [list, or "none"]
 - Resume state: [Clean / Interrupted, resume from RESUME_STATE.md]
+- Task lists: [the checker's line, or "old single list, build question asked"]
 
 Any non-empty recent item → surface in the user summary below. Otherwise stay silent on it. No "None" placeholders, that's noise.
 
@@ -228,8 +246,11 @@ Present a clear summary. Only include sections that have content, and omit empty
 ### Last Session ([N-1])
 [What was done]
 
-### Pending Tasks
-[List from TASK_REGISTRY with pending status]
+### Live Tasks
+[The checker's first line, then every LIVE row: WAITING ON USER first, then IN PROGRESS, then PENDING]
+
+### Task list flags (only if the checker flagged rows)
+[Each flagged row and what is wrong with it]
 
 ### ⚠️ Recently revised (only if non-empty)
 [Decisions revised in the last 3 sessions, with D-number and reason. These are the highest-risk source of contradictions in today's work]

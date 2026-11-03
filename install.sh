@@ -110,6 +110,13 @@ cp "$SCRIPT_DIR/.claude/hooks/pre-commit-check.sh" "$TARGET/.claude/hooks/"
 cp "$SCRIPT_DIR/.claude/hooks/pre-compact-save.sh" "$TARGET/.claude/hooks/"
 # end of 4.2
 
+# 4.2.1 Copy the task list checker
+# /start, /save, /end and /audit run it to confirm the two task lists (LIVE and COMPLETED) are correct.
+echo "  Copying tools..."
+mkdir -p "$TARGET/.claude/tools"
+cp "$SCRIPT_DIR/.claude/tools/registry_check.js" "$TARGET/.claude/tools/"
+# end of 4.2.1
+
 # 4.3 Copy settings (conditional)
 # Copy settings.json only if it doesn't already exist
 if [ ! -f "$TARGET/.claude/settings.json" ]; then
@@ -120,7 +127,7 @@ else
 fi
 # end of 4.3
 
-# 4.4 Copy templates (includes LEARNED_BEHAVIOUR.md and RESUME_STATE.md)
+# 4.4 Copy templates (includes LEARNED_BEHAVIOUR.md, RESUME_STATE.md and both task lists)
 # Copy templates
 echo "  Copying templates..."
 mkdir -p "$TARGET/templates"
@@ -142,6 +149,10 @@ if [ "${INSTALL_TO_PARENT:-false}" = true ] && [ -n "$PARENT_CLAUDE_DIR" ]; then
     mkdir -p "$PARENT_CLAUDE_DIR/.claude/hooks"
     cp "$SCRIPT_DIR/.claude/hooks/pre-commit-check.sh" "$PARENT_CLAUDE_DIR/.claude/hooks/"
     cp "$SCRIPT_DIR/.claude/hooks/pre-compact-save.sh" "$PARENT_CLAUDE_DIR/.claude/hooks/"
+
+    echo "  Copying tools to parent: $PARENT_CLAUDE_DIR/.claude/tools/"
+    mkdir -p "$PARENT_CLAUDE_DIR/.claude/tools"
+    cp "$SCRIPT_DIR/.claude/tools/registry_check.js" "$PARENT_CLAUDE_DIR/.claude/tools/"
 
     if [ ! -f "$PARENT_CLAUDE_DIR/.claude/settings.json" ]; then
         echo "  Copying settings.json to parent..."

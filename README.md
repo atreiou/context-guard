@@ -61,7 +61,8 @@ From then on, `/start` reads your existing safeguard files and recovers full con
 |------|---------|
 | `CLAUDE.md` | Auto-read every session. Project rules and pointers to other files |
 | `SESSION_LOG.md` | Running history of what happened each session. Auto-paginated when large |
-| `TASK_REGISTRY.md` | Every task ever created, with status. Nothing gets dropped. Auto-paginated when large |
+| `TASK_REGISTRY.md` | The LIVE task list: every task not yet finished, read in full at every `/start`. Never rotated |
+| `TASK_REGISTRY_COMPLETED.md` | The COMPLETED task list: every finished task, newest first, with whether and how it was tested and its proof |
 | `DECISIONS.md` | Architectural decisions register. The "why" behind every choice. Auto-paginated when large |
 | `COMMENTS.md` | Your verbatim comments logged as a safety net. Auto-paginated when large |
 | `FEATURE_LIST.json` | Pass/fail feature tracker (JSON is harder for LLMs to accidentally overwrite) |
@@ -78,6 +79,7 @@ From then on, `/start` reads your existing safeguard files and recovers full con
 | `/end` skill | Optional session save point: clean wrap-up with archive rotation, commit, push, backup sync |
 | `/lessons` skill | Turns a session's throwaway debug scripts into learned behaviours and helpers, then clears them |
 | `/itemise` skill | Itemisation Protocol: numbered code addressing with backup and integrity verification |
+| Task list checker | `.claude/tools/registry_check.js`: confirms the two task lists follow their rules, run by `/start`, `/save`, `/end` and `/audit` (needs Node.js) |
 | Pre-commit hook | Reminds Claude to update safeguard files before every git commit |
 | Pre-compaction hook | Automatically saves all progress before context compression, so no data loss |
 
@@ -86,9 +88,10 @@ From then on, `/start` reads your existing safeguard files and recovers full con
 ### Session Start (`/start`)
 
 1. Locates Context Guard files, searching subdirectories up to 4 levels deep, so you can launch from a parent directory
-2. Reads the current safeguard files: the last five sessions of history, plus the one-line indexes of everything archived
+2. Reads the current safeguard files: the last five sessions of history, the one-line indexes of everything archived, and the whole LIVE task list
 3. Checks git state, detecting and committing orphaned work from crashed or overflowed sessions
-4. Summarises everything and waits for your confirmation
+4. Runs the task list checker and gives you its line: `Live tasks: N (W waiting on user)`
+5. Summarises everything and waits for your confirmation
 
 **What `/start` deliberately does NOT read:** archive pages, and plan files. Both are expensive and rarely needed at the moment a session opens. The archive indexes tell Claude what exists, and `RESUME_STATE.md` names the exact plan file and section the first task needs, so the relevant material gets opened when the work starts rather than before it. The full plan-versus-registry sweep, which catches dropped and unexplained tasks across every plan and every archive, lives in `/audit`, where it reads *all* plans rather than a sample.
 
@@ -105,8 +108,8 @@ Everything `/start` does, plus:
 
 When you're ready to stop working, type `/end`. Claude will:
 1. Review everything done this session
-2. Update all safeguard files (session log, task registry, comments, decisions, features)
-3. Rotate every ledger: anything older than the last five sessions moves into an archive page, leaving a one-line index entry behind
+2. Update all safeguard files (session log, both task lists, comments, decisions, features), and confirm with the checker that both task lists are correct
+3. Rotate every ledger except the LIVE task list: anything older than the last five sessions moves into an archive page, leaving a one-line index entry behind
 4. Archive any unarchived plans
 5. Commit and push all changes (including backup remotes if configured)
 6. Verify clean git state
@@ -199,14 +202,15 @@ This file is interwoven with auth.js. Edit one, edit the other (see CLAUDE.md �
 
 ### Ledger Rotation: the 5-session rule
 
-As projects grow, safeguard files accumulate history that eats into the context window on every `/start`. Context Guard bounds this: **every ledger's main file holds only the last five sessions' content.** Everything older moves, verbatim, into numbered archive pages (`SESSION_LOG_page1.md`, `TASK_REGISTRY_page2.md`, and so on), which are append-only and never deleted.
+As projects grow, safeguard files accumulate history that eats into the context window on every `/start`. Context Guard bounds this: **every ledger's main file holds only the last five sessions' content.** Everything older moves, verbatim, into numbered archive pages (`SESSION_LOG_page1.md`, `DECISIONS_page2.md`, and so on), which are append-only and never deleted. The LIVE task list is the one exception.
 
 `/end` runs the rotation every session, using the full session context it has right there to make the archival calls well.
 
 | File | What stays in the main file | What gets archived |
 |------|---------------------------|-------------------|
 | SESSION_LOG | Last 5 sessions | Older session entries |
-| TASK_REGISTRY | All live tasks + last 5 sessions of done tasks | Older completed tasks, plus stale pending rows with an explicit disposition |
+| TASK_REGISTRY (LIVE) | Every task not yet finished, however old | Nothing, ever |
+| TASK_REGISTRY_COMPLETED | The newest 500 finished tasks | Older finished tasks, once the file passes 500 rows |
 | DECISIONS | Last 5 sessions of decisions, **plus a one-line index of every archived decision** | Older decisions, full text |
 | LEARNED_BEHAVIOUR | Last 5 sessions of entries, **plus a one-line index of every archived entry** | Older entries, full text |
 | COMMENTS | Unactioned project directives | Actioned comments and curiosity questions |
@@ -221,9 +225,27 @@ D-042: Sigil images are WebP-only [active-constraint] → DECISIONS_page3.md
 
 Without the index, the only way to keep a binding rule discoverable was to never archive it, which meant DECISIONS.md grew without limit until it swallowed the context window at every session start. With it, the main file stays small and nothing stops applying.
 
-**Pending tasks are never silently dropped.** A `⏳` row that outlives the window has to be given an explicit disposition: kept in a `Live backlog` section, consolidated into another tracked item and annotated as such, or archived with its deferral tag intact. Letting one vanish in a trim is treated as a project failure, and `/audit` checks for exactly this.
+**Pending tasks are never rotated at all.** An unfinished task stays on the LIVE list until it finishes, however old it is. Rotating open tasks into backlog sections is how they get lost: the sections fill up, no session reads them, and work that was finished elsewhere is never closed on its own row. See [Two Task Lists](#two-task-lists-live-and-completed) below.
 
 `/audit` also verifies index integrity in both directions: an entry sitting in an archive with no index line is a **lost rule**, and an index line pointing at an entry that is not there is a **broken pointer**. Both are reported as critical.
+
+### Two Task Lists: LIVE and COMPLETED
+
+Every project keeps exactly two task lists, and no task is kept anywhere else.
+
+| List | File | Holds | Columns |
+|------|------|-------|---------|
+| LIVE | `TASK_REGISTRY.md` | Every task not yet finished | `ID \| Task \| Status \| Updated \| Notes` |
+| COMPLETED | `TASK_REGISTRY_COMPLETED.md` | Every finished task, newest at the top | `ID \| Task \| Outcome \| Tested \| Proof` |
+
+- **Status** starts with `PENDING`, `IN PROGRESS` or `WAITING ON USER`, then one sentence of what is left. **Updated** is the session and date the row was last checked against the evidence.
+- **Outcome** is `DONE`, `SUPERSEDED` (by a named task) or `DROPPED` (only with the user's own words quoted), with a date. **Tested** is `TESTED BY USER`, `TESTED INDEPENDENTLY`, `BUILDER ONLY` or `NOT TESTED`, with where the record is. **Proof** is a path or a commit.
+- **The moment a task finishes**, its row comes off LIVE and goes to the top of COMPLETED, in that same turn. Nothing is saved up for `/end`.
+- **COMPLETED is also the tested list.** Something already proved there is not retested unless its files have changed since.
+- **A handover's tasks are merged into LIVE**, so there is only ever one list of pending tasks; the handover itself still stands for everything else it explains.
+- **`/start` reads only LIVE, all of it. `/save` and `/end` confirm both lists are correct** with the checker, `.claude/tools/registry_check.js`, which flags a status outside the three words, a row not re-checked for two sessions, a task row outside the two tables, a DONE with no proof, a DROPPED with no quote, COMPLETED out of date order, and the same task on both lists.
+
+**Upgrading an existing project.** A project installed before the two lists still has one `TASK_REGISTRY.md`. `/start` notices and asks whether to build the two lists straight away or wait. Building them follows `templates/UPGRADE_TWO_TASK_LISTS.md`: the old file is kept whole in an archive page, and every row is checked against the evidence before it is placed, because a row in the old list may say pending when the work was finished and recorded somewhere else.
 
 ### Automatic Pre-Compaction Save
 
@@ -235,7 +257,7 @@ Combined with the auto-checkpoint protocol (which keeps safeguard files current 
 
 Before every git commit, a hook reminds Claude to update:
 - COMMENTS.md (any new user feedback)
-- TASK_REGISTRY.md (any new or completed tasks)
+- The two task lists (new tasks on LIVE, finished ones moved to the top of COMPLETED)
 - SESSION_LOG.md (if significant milestone)
 - FEATURE_LIST.json (if feature status changed)
 - plans/ (any unarchived plans)

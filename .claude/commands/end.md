@@ -1,5 +1,5 @@
 ---
-description: "Type /end to wrap up a session. Updates all safeguard files, rotates anything older than 5 sessions into the archives, commits, and leaves a clean handoff."
+description: "Type /end to wrap up a session. Updates all safeguard files, confirms both task lists are correct, rotates anything older than 5 sessions into the archives, commits, and leaves a clean handoff."
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
@@ -7,7 +7,7 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 
 The user wants to wrap up this session cleanly. Your job is to create a save point so the next session can pick up seamlessly via `/start`.
 
-**CRITICAL: /end is a SAVE-ONLY operation.** Do not start new work, execute plans, or make code changes beyond updating safeguard files. If a plan was approved this session but not yet executed, log it as ⏳ pending in TASK_REGISTRY.md and note it in the "Next session" field of the report. The next session will pick it up via /start.
+**CRITICAL: /end is a SAVE-ONLY operation.** Do not start new work, execute plans, or make code changes beyond updating safeguard files. If a plan was approved this session but not yet executed, put its tasks on the LIVE list (TASK_REGISTRY.md) as PENDING and note it in the "Next session" field of the report. The next session will pick it up via /start.
 
 **Date convention:** all dates written by this skill use **dd/mm/yy** (UK format). Do not retroactively rewrite older dates already in safeguard files; only new entries follow this rule.
 
@@ -31,7 +31,7 @@ Safeguard files may not be in the current working directory; they could be in a 
 Before saving, verify nothing from this session is missing. Log anything missing BEFORE proceeding to Step 1.
 
 - Every user comment from this session → COMMENTS.md, verbatim, timestamped.
-- Every task worked on → TASK_REGISTRY.md status updated.
+- Every task worked on → its LIVE row brought up to date, or, if it finished, moved to the top of COMPLETED.
 - Every decision made → DECISIONS.md, with its `Category:` field.
 - Every non-obvious gotcha, workaround, or >15-minute debug → LEARNED_BEHAVIOUR.md.
 - **Did this session create or delete any credentials, accounts, or test fixtures?** If so, the FULL details (usernames, passwords, IDs, which are real identities and which are fixtures) must be recorded in the project's designated record (see CLAUDE.md; commonly `docs/TEST_USERS.md`) **and** in the session log **before this session counts as cleanly saved**. Not summarised, not deferred. A save that omits them blocks the next session outright: it cannot log in, and the information has to be recreated from scratch.
@@ -76,17 +76,21 @@ Check and update ALL of these:
 - **Next step:** Capture what the user wants done next, using their own words where possible. Not just a list of pending tasks, but the actual direction, priority, and intent. This is what the next session's /start will read to understand where to pick up.
 - **Errors encountered:** If any significant errors, blockers, or unexpected issues were hit during the session, log what happened and how it was resolved. Skip this if nothing notable occurred, and don't force empty sections. This prevents future sessions from repeating the same mistakes.
 
-### TASK_REGISTRY.md
-- Log any new tasks created this session
-- **When creating new tasks:** add `Governed by: D-xx, D-yy` to the Notes column for any decisions that constrain the task's implementation.
-- Update status of tasks worked on (✅ done / ⏳ pending / 🔄 in-progress)
-- **When marking a task ✅ done:** amend its Notes column with:
-  - **Files:** 1–3 key paths touched
-  - **Approach:** one sentence naming the pattern or library used
-  - **Governed by:** decision IDs that shaped the solution (if any)
+### The two task lists (TASK_REGISTRY.md is LIVE, TASK_REGISTRY_COMPLETED.md is COMPLETED)
 
-  Example: `Files: widgets/favourite.php, blocks/fav-block.js | Approach: ACF flexible content with REST cache | Governed by: D-055`
-- Ensure NO tasks are missing. Cross-reference with what was actually done
+**/end confirms both lists are correct.** Nothing is carried forward on trust.
+
+- **New tasks** from this session go on LIVE: ID, Task, a Status starting `PENDING`, `IN PROGRESS` or `WAITING ON USER` followed by one sentence of what is left, Updated as `S<N> dd/mm/yy`, and in Notes `Governed by: D-xx, D-yy` for any decisions that constrain the work.
+- **Tasks worked on:** bring their LIVE Status and Updated up to date.
+- **Finished tasks** should already have moved in the turn they finished. Any that has not moves now: delete its LIVE row and add it at the TOP of COMPLETED with Outcome (`DONE dd/mm/yy`, `SUPERSEDED dd/mm/yy by <id>`, or `DROPPED dd/mm/yy` with the user's own words quoted), Tested (`TESTED BY USER`, `TESTED INDEPENDENTLY`, `BUILDER ONLY` or `NOT TESTED`, then where the record is), and Proof (a path or a commit, then the completion record).
+
+  Example Proof: `commit 3f2a9c1; Files: widgets/favourite.php, blocks/fav-block.js | Approach: ACF flexible content with REST cache | Governed by: D-055`
+- **Handovers:** every open task and every question for the user that arrived in a handover this session is on LIVE. The handover itself stays as it is.
+- **Ensure NO tasks are missing.** Cross-reference LIVE and COMPLETED with what was actually done this session.
+- **Run the checker:**
+  `node .claude/tools/registry_check.js --root "<CCG_ROOT>" --session S<N>`
+  Fix every row it flags. A row flagged "not re-checked" is checked against the evidence now: still open, update its Status and Updated; finished, move it to COMPLETED. Run the checker again until it reports both lists clean. Any flag you genuinely cannot fix goes to the user in the Step 6 report, with the reason.
+- **A project still on the old single list** (no `TASK_REGISTRY_COMPLETED.md`): update the old rows in place, do NOT rotate or archive any of them, and say in the Step 6 report that the two-list build is still waiting on the user.
 
 ### COMMENTS.md
 - Verify all user comments from this session are logged verbatim
@@ -111,7 +115,7 @@ Check and update ALL of these:
 - Do NOT log ordinary coding knowledge; only things a fresh agent would re-discover the hard way.
 
 ### FEATURE_LIST.json
-- **Semantics:** FEATURE_LIST is a QA tracker, NOT a task-completion mirror. Only flip `passes: true` when the user has **manually verified** the feature works end-to-end. Task completion is tracked in TASK_REGISTRY.
+- **Semantics:** FEATURE_LIST is a QA tracker, NOT a task-completion mirror. Only flip `passes: true` when the user has **manually verified** the feature works end-to-end. Task completion is tracked in the two task lists.
 - If the user reports a feature broken, flip `passes: false` with a `notes` description of the failing case.
 
 ## Step 2.5: Rotate Safeguard Files (Pagination)
@@ -124,7 +128,7 @@ Check and update ALL of these:
 3. Determine the next page number: check for existing `SESSION_LOG_page*.md` files. New page = highest existing + 1 (or 1 if none exist).
 4. Create `SESSION_LOG_pageN.md` with header:
    ```
-   # SESSION_LOG: Archive Page N (Sessions X–Y)
+   # SESSION_LOG: Archive Page N (Sessions X to Y)
    # Current sessions: see SESSION_LOG.md
    ---
    [archived content]
@@ -133,20 +137,14 @@ Check and update ALL of these:
 6. Add/update an archive reference line after the file header: `# 📁 Archives: SESSION_LOG_page1.md, SESSION_LOG_page2.md, ...`
 7. If 5 or fewer sessions exist, there is nothing to archive. Skip.
 
-### TASK_REGISTRY.md
-1. Scan all task rows. Separate into:
-   - **Keep:** All non-done tasks (⏳ 🔄 ❌ 🔁) + done tasks (✅) from the last 5 sessions
-   - **Archive:** Done tasks (✅) from sessions older than the last 5
-2. Create `TASK_REGISTRY_pageN.md` with archived done tasks, preserving their session headers.
-3. Trim the main file: keep file header + all non-done tasks + last 5 sessions of done tasks.
-4. **A pending row older than the window is NEVER silently dropped.** Over time the main file accumulates stale ⏳ rows that are still, technically, pending. Each one must get an explicit disposition. Pick one and record it:
-   - **Kept**: still genuinely actionable and owned by an agent. Move it into a `## Live backlog` section in the main file so it stays visible without pretending to belong to a recent session.
-   - **Consolidated**: the work is now covered by another tracked item. Annotate the row `consolidated: <id of the thing that covers it>` and archive it. That counts as tracked, not dropped.
-   - **Archived with its tag**: deferred or out-of-scope rows (post-MVP, deferred-to-user, blocked-on-third-party) keep their tag in the archive so a future search finds them.
+### TASK_REGISTRY.md (LIVE): never rotates
 
-   Deleting the row, or letting it vanish in a trim, is a project failure. If you cannot classify a row, keep it and flag it in the Step 6 report.
-5. Add/update archive reference line.
-6. If no done tasks older than 5 sessions and no stale pending rows, there is nothing to archive. Skip.
+A task stays on LIVE until it finishes, however old it is. Nothing on LIVE is archived, carried into a backlog section, or trimmed. Rotation of the old single list is exactly what once hid hundreds of open rows in sections no session read.
+
+### TASK_REGISTRY_COMPLETED.md
+1. Rotate only when the main file holds more than 500 rows. Otherwise skip.
+2. Move the oldest rows beyond 500 (the bottom of the table), verbatim and in order, to the next `TASK_REGISTRY_COMPLETED_pageN.md`, under the same `## COMPLETED TASKS` header row.
+3. Add/update the archive reference line in the main file's header, so a search for an earlier proof still finds the page.
 
 ### DECISIONS.md
 
@@ -191,7 +189,7 @@ Before proceeding to git, confirm every safeguard file was addressed. Output thi
 **Update verification:**
 - RESUME_STATE.md: wiped to clean state (Clean save: true)
 - SESSION_LOG.md: [updated / already current, with the reason]
-- TASK_REGISTRY.md: [N tasks added/updated / no task changes, with the reason]
+- Task lists: [the checker's line, which must say both lists clean; N added to LIVE, M moved to COMPLETED, K re-checked / no task changes, with the reason]
 - COMMENTS.md: [N comments logged / no new comments this session]
 - DECISIONS.md: [N decisions logged (all have Category field) / no new decisions, checked: no architecture choices, algorithm choices, UI patterns, data model changes, naming conventions, or approach reversals this session]
 - LEARNED_BEHAVIOUR.md: [N entries logged / no new tactical knowledge, checked: no gotchas, workarounds, or >15min debugs this session]
@@ -209,6 +207,8 @@ Before proceeding to git, confirm every safeguard file was addressed. Output thi
 **Feature trigger check:** Did the user **manually verify** any feature working end-to-end this session, or report one broken? Task completion does NOT count; only human verification does.
   If yes and FEATURE_LIST.json wasn't updated → go back and update it now.
 
+**Task list check:** Did the checker report both lists clean? If not → go back to Step 2 and fix the flagged rows. Only a flag that genuinely cannot be fixed now may remain, and it goes in the Step 6 report with the reason.
+
 If any file shows 0 changes, the reason must be specific (not "no changes needed").
 "No changes needed" without explanation is not acceptable. State what you checked.
 
@@ -222,7 +222,7 @@ If any file shows 0 changes, the reason must be specific (not "no changes needed
     - If the content clearly references a different project name, skip it.
     - If ambiguous (no project name found), skip it. Do not archive plans you can't confidently attribute.
 - Copy matched plans to `plans/S{session}-{seq}_{description}.md`
-- **DO NOT EXECUTE archived plans.** /end is a save point, not an execution trigger. If a plan was approved but not yet implemented, mark its tasks as ⏳ pending in TASK_REGISTRY.md and record it in SESSION_LOG.md's "Next step" field so /start picks it up.
+- **DO NOT EXECUTE archived plans.** /end is a save point, not an execution trigger. If a plan was approved but not yet implemented, put its tasks on LIVE as PENDING and record it in SESSION_LOG.md's "Next step" field so /start picks it up.
 
 **Internal verification:** Check the **5 most recently modified** `.md` files in `~/.claude/plans/`. Read each file's first ~500 characters, match against the project name, and archive any that belong to this project. Do not output the verification details. Just report the result: either "Archived N plans: [list]" or "No new project plans found to archive."
 
@@ -270,9 +270,10 @@ Present the session summary in EXACTLY this format. Do not vary the structure, h
 
 **What was done:** [1-2 sentence summary of the session's main accomplishments]
 
-**Tasks:** [X] done, [Y] pending, [Z] in progress
-- Pending: [list task IDs and names, or "None"]
+**Tasks:** [the checker's line]; [X] finished this session
+- Waiting on user: [list task IDs and names, or "None"]
 - In progress: [list task IDs and names, or "None"]
+- Pending: [list task IDs and names, or "None"]
 
 **Commits:** [list of commit hashes, or "None, working tree clean"]
 
