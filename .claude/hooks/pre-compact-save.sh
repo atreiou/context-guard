@@ -1,6 +1,6 @@
 #!/bin/bash
 # Context Guard: Pre-Compaction Backup Hook
-# Fires before context compaction. Copies every Context Guard file into a dated backup folder,
+# Fires before context compaction. Copies every Context Guard file, and the project's CLAUDE.md, into a dated backup folder,
 # checks each copy byte for byte against its original, and only then reports success.
 # A failed or partial backup is never reported as a good one.
 
@@ -35,6 +35,15 @@ for f in "${FILES[@]}"; do
     exit 1
   fi
 done
+# The project's CLAUDE.md, in the root, holds its rules; it is backed up with the rest
+if [ "$COPIED" -gt 0 ] && [ -f "$ROOT/CLAUDE.md" ]; then
+  if cp "$ROOT/CLAUDE.md" "$PARTIAL/" && cmp -s "$ROOT/CLAUDE.md" "$PARTIAL/CLAUDE.md"; then
+    COPIED=$((COPIED + 1))
+  else
+    echo "Context Guard: backup FAILED on CLAUDE.md. The partial copy is left in $PARTIAL and no backup is claimed." >&2
+    exit 1
+  fi
+fi
 if [ "$COPIED" -eq 0 ]; then
   rmdir "$PARTIAL" "$DEST" 2>/dev/null
   echo "Context Guard: no Context Guard files found in $CG, so nothing was backed up." >&2
