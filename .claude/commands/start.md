@@ -118,7 +118,7 @@ If the project-root `CLAUDE.md` still contains the placeholder `{PROJECT_NAME}`,
 
 The ledgers are rotated: each main file holds ONLY the last 5 sessions' content (plus, for DECISIONS and LEARNED_BEHAVIOUR, a one-line index of everything archived). They are small by design, so read each in full, in this order:
 
-0. **`RESUME_STATE.md`, READ THIS FIRST.** This file holds only the in-flight state from the last /save. If `Clean save: false`, the previous session was interrupted mid-task, and the In-flight and Next step sections are your handoff note. Surface this in the Step 4 summary under a `🔄 Resume from last session` heading so the user knows you picked it up. If `Clean save: true`, the previous session ended cleanly and RESUME_STATE is empty, so the next-session intent lives in SESSION_LOG's newest "Next step".
+0. **`RESUME_STATE.md`, READ THIS FIRST.** This file holds only the in-flight state from the last /save. If `Clean save: false`, the previous session was interrupted mid-task, and the In-flight and Handover sections are your handover (an older file may have a Next step section instead of a Handover). Surface this in the Step 4 summary under a `🔄 Resume from last session` heading so the user knows you picked it up. If `Clean save: true`, the previous session ended cleanly and RESUME_STATE holds only the next action, so the full handover is the newest SESSION_LOG entry's `**Handover:**` block (an older entry may have only a "Next step" line). Step 3.6 checks whichever handover applies.
 0.5. **`CONTEXT_GUARD_UPDATE.md`, if it exists in CCG_ROOT.** A note left when Context Guard itself was updated in this project: what changed, which files, and what to do next. Read it in full, surface it in the Step 4 summary under `🛠 Context Guard was updated`, and do what it asks before other work. It says itself when it may be deleted.
 1. `CLAUDE.md` (project root): project rules and architecture. Parse the `## Custom Context Files` section for any project-specific files to load.
 2. `SESSION_LOG.md`: the last 5 sessions
@@ -210,7 +210,19 @@ node .claude/tools/registry_check.js --root "<CCG_ROOT>" --session S<N>
 - Exit code 2 means the project is still on the old single list: the question in Step 1 covers it.
 - If `node` or the checker is missing, say so in the summary. Never report the lists as checked when the checker did not run.
 
-**Plan cross-referencing is NOT done here.** Reading plan files at session start costs thousands of tokens for a check that is only occasionally needed, and RESUME_STATE's "Next step" already names the exact plan file and section the first task requires. The full plan-versus-registry sweep, including DROPPED TASK detection across every plan and every archive page, lives in `/audit` §3, which reads ALL plans rather than a sample. Run `/audit` when you want that check; do not reproduce it here.
+**Plan cross-referencing is NOT done here.** Reading plan files at session start costs thousands of tokens for a check that is only occasionally needed, and the handover's Next action already names the exact plan file and section the first task requires. The full plan-versus-registry sweep, including DROPPED TASK detection across every plan and every archive page, lives in `/audit` §3, which reads ALL plans rather than a sample. Run `/audit` when you want that check; do not reproduce it here.
+
+## Step 3.6: Check the Handover
+
+The handover is RESUME_STATE.md's `## Handover` when `Clean save: false`, otherwise the newest SESSION_LOG.md entry's `**Handover:**` block. A handover file or `CONTEXT_GUARD_UPDATE.md` note read this session is checked the same way. The standard is in CLAUDE.md, `## HANDOVERS MUST BE COMPLETE`: eight parts, written for a reader with no memory of the last session. Check it against the evidence before any work:
+
+1. **All eight parts are there:** Tasks, Files, Next action, The user's words, Decisions, Questions, Traps, Checks. A missing part is a gap. A part that says it has nothing ("No decisions this session") is not. An older handover written before this standard is checked for what it does have, and its missing parts are reported once, as one line.
+2. **Tasks:** every task ID it names is on the to do list or the done list, and its state there matches what the handover says.
+3. **Files:** what it says is committed is in `git log`, what it says is pushed is not in `git log @{u}..HEAD`, and what it says is uncommitted shows in `git status`. Uncommitted work the handover never mentions is a gap.
+4. **Questions:** each one is on the to do list as `WAITING ON USER`. One that is not goes on now.
+5. **Next action:** the task, file, section or plan it names exists.
+
+Fill what the evidence settles (git, the two lists, the session log). Anything only the user can answer is put to them by AskUserQuestion before the work it affects begins. Every gap and mismatch goes in the Step 4 summary under `Handover gaps`; a handover with none needs no mention.
 
 ## Step 4: Summarise
 
@@ -228,6 +240,7 @@ Silently complete this checklist before composing the user summary. This is a se
 - New learned behaviours since last /start: [list, or "none"]
 - Resume state: [Clean / Interrupted, resume from RESUME_STATE.md]
 - The two lists: [the checker's line, or "older Context Guard, upgrade question asked"]
+- Handover check: [all eight parts present and matching the evidence / N gaps, listed in the summary]
 
 Any non-empty recent item → surface in the user summary below. Otherwise stay silent on it. No "None" placeholders, that's noise.
 
@@ -239,7 +252,7 @@ Present a clear summary. Only include sections that have content, and omit empty
 ## Session [N]: Context Recovery
 
 ### 🔄 Resume from last session (only if RESUME_STATE.md Clean save: false)
-[Prepend the In-flight and Next step content verbatim from RESUME_STATE.md]
+[Prepend the In-flight and Handover content verbatim from RESUME_STATE.md]
 
 ### 🛠 Context Guard was updated (only if CONTEXT_GUARD_UPDATE.md exists)
 [What changed and what it asks, in a few lines]
@@ -252,6 +265,9 @@ Present a clear summary. Only include sections that have content, and omit empty
 
 ### List flags (only if the checker flagged rows)
 [Each flagged row and what is wrong with it]
+
+### Handover gaps (only if Step 3.6 found any)
+[Each missing part or mismatch, what the evidence showed, and what was filled or asked]
 
 ### ⚠️ Recently revised (only if non-empty)
 [Decisions revised in the last 3 sessions, with D-number and reason. These are the highest-risk source of contradictions in today's work]

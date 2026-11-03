@@ -20,9 +20,9 @@ Context Guard creates a set of safeguard files that persist across sessions, all
 
 - **`/audit`**: Your personal safeguard. Call this at ANY moment to verify the agent's work. It runs a comprehensive integrity check across all files, plans, git state, and archived safeguard pages.
 
-- **`/save`**: Your save point, whenever you want one. Writes everything since the last save to the safeguard files, commits, and pushes, and writes an "in flight" handoff note so an interrupted session can be picked up mid-thought. Deliberately lightweight: it does not run the full archive rotation, because nothing has aged since the last one. Use during long sessions or any time you want an explicit save point.
+- **`/save`**: Your save point, whenever you want one. Writes everything since the last save to the safeguard files, commits, and pushes, and writes a full handover so an interrupted session can be picked up mid-thought. Deliberately lightweight: it does not run the full archive rotation, because nothing has aged since the last one. Use during long sessions or any time you want an explicit save point.
 
-- **`/end`**: Optional session save point. When you're done for the day, type `/end` and the agent will save every safeguard file in full, rotate anything older than five sessions into the archives, archive plans, commit, push (including to backup remotes if configured), and report a clean summary. Not required, since `/start` handles recovery regardless, but useful when you want an explicit clean handoff.
+- **`/end`**: Optional session save point. When you're done for the day, type `/end` and the agent will save every safeguard file in full, write a full handover for the next session, rotate anything older than five sessions into the archives, archive plans, commit, push (including to backup remotes if configured), and report a clean summary. Not required, since `/start` handles recovery regardless, but useful when you want an explicit clean handoff.
 
 - **`/lessons`**: Optional end-of-session harvest. Most of what a debugging session learns is thrown away with the throwaway scripts that learned it. `/lessons` diffs this session's scratch scripts against each other, because the diff between version 2 and version 3 is a literal record of what the agent believed that turned out to be false, proposes each finding to you for approval, installs the approved ones as learned behaviours or helper functions, and only then clears the spent scripts away.
 
@@ -69,7 +69,7 @@ Everything goes in one `context-guard/` folder, so nothing of Context Guard's is
 | `context-guard/LEARNED_BEHAVIOUR.md` | Tactical knowledge: platform quirks and workarounds found the hard way |
 | `context-guard/COMMENTS.md` | Your verbatim comments logged as a safety net |
 | `context-guard/FEATURE_LIST.json` | Pass/fail feature tracker (JSON is harder for LLMs to accidentally overwrite) |
-| `context-guard/RESUME_STATE.md` | What was in flight at the last `/save` |
+| `context-guard/RESUME_STATE.md` | What was in flight at the last `/save`, with its full handover |
 | `context-guard/archive/` | Archive pages holding everything older than the last 5 sessions |
 | `context-guard/plans/`, `audits/`, `backups/`, `templates/` | Archived plans, saved audit reports, automatic backups, and the templates the project was set up from |
 
@@ -79,7 +79,7 @@ Everything goes in one `context-guard/` folder, so nothing of Context Guard's is
 |-----------|---------|
 | `/start` skill | Session recovery: one command to restore full context |
 | `/audit` skill | On-demand integrity check: verify the agent's work at any moment |
-| `/save` skill | Your save point: write the safeguard files and an in-flight handoff note, commit, push |
+| `/save` skill | Your save point: write the safeguard files and a full handover, commit, push |
 | `/end` skill | Optional session save point: clean wrap-up with archive rotation, commit, push, backup sync |
 | `/lessons` skill | Turns a session's throwaway debug scripts into learned behaviours and helpers, then clears them |
 | `/itemise` skill | Itemisation Protocol: numbered code addressing with backup and integrity verification |
@@ -126,7 +126,7 @@ This is entirely optional, since `/start` will recover context regardless. But `
 The safeguard files are written only when you ask. Agents left to themselves save constantly, which spends usage for nothing; `/save` puts that under your control. Between saves only the two lists change, as tasks are created and finished. When you run `/save`, the agent will:
 1. Go back through the conversation for every comment, task, decision, or credential since the last save
 2. Write all of it to the safeguard files
-3. Add a save marker to the session log with an "in flight" handoff note
+3. Add a save marker to the session log, and write the full handover to RESUME_STATE.md
 4. Commit and push carefully
 5. Confirm what was saved
 
@@ -249,7 +249,24 @@ Every project keeps exactly two lists, and no task is kept anywhere else.
 - **A handover's tasks are merged into the to do list**, so there is only ever one list of pending tasks; the handover itself still stands for everything else it explains.
 - **`/start` reads only the to do list, all of it. `/save` and `/end` confirm both lists are correct** with the checker, `.claude/tools/registry_check.js`, which flags a status outside the three words, a row not re-checked for two sessions, a task row outside the two tables, a DONE with no proof, a DROPPED with no quote, the done list out of date order, and the same task on both lists.
 
-**Upgrading an existing project.** A project installed before these changes keeps its files where they were and has one `TO_DO_LIST.md`. `/start` notices and asks whether to upgrade straight away or wait. The upgrade follows `templates/UPGRADE.md`: it moves every Context Guard file into the `context-guard/` folder (archive pages into `archive/`), then builds the two lists, keeping the old list whole in an archive page and checking every row against the evidence before it is placed, because a row in the old list may say pending when the work was finished and recorded somewhere else.
+**Upgrading an existing project.** A project installed before these changes keeps its files where they were and has one `TASK_REGISTRY.md`. `/start` notices and asks whether to upgrade straight away or wait. The upgrade follows `templates/UPGRADE.md`: it moves every Context Guard file into the `context-guard/` folder (archive pages into `archive/`), then builds the two lists, keeping the old list whole in an archive page and checking every row against the evidence before it is placed, because a row in the old list may say pending when the work was finished and recorded somewhere else.
+
+### Handovers
+
+Each new session carrying on seamlessly from the last is the main thing Context Guard exists for, and a thin handover is where most mistakes start. So every handover (RESUME_STATE.md at `/save`, the session log entry at `/end`, a handover file, an update note) states eight things in full:
+
+| Part | What it holds |
+|------|---------------|
+| Tasks | Every task touched: what is done, what is not, where it stopped |
+| Files | Every file changed, and whether it is committed, pushed or uncommitted |
+| Next action | The exact next step: task, file and section, command, plan section |
+| The user's words | What the user wants next, quoted |
+| Decisions | What was decided and why |
+| Questions | Everything waiting on the user, also on the to do list |
+| Traps | Errors hit, what failed, and what not to do |
+| Checks | How to check the work, and what is and is not verified |
+
+Before a handover counts as written it must pass the **cold-read test**: could an agent that has never seen the session carry on from it alone, without asking anything or rediscovering what the session already found? At the next `/start`, the agent checks the handover against git and the two lists and reports every gap before work begins.
 
 ### Automatic Pre-Compaction Backup
 

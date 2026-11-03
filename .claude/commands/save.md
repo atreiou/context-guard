@@ -53,12 +53,21 @@ Check and update ALL of these:
   **Clean save:** false
 
   ## In-flight
-  [What is actively being worked on right now: approach, current state, next micro-step. Handoff note to the next agent.]
+  [What is being worked on right now: the approach, the current state, and the next micro-step.]
 
-  ## Next step
-  [User's stated intent in their own words]
+  ## Handover
+  1. **Tasks:** [every task ID touched, what each one is, exactly what is done, what is not, and where it stopped]
+  2. **Files:** [every file changed, and whether each one is committed, pushed, or still uncommitted, with the branch]
+  3. **Next action:** [the exact next step: task ID, file and section, command, and the plan file and section if a plan governs it]
+  4. **The user's words:** [what the user wants next, quoted]
+  5. **Decisions:** [what was decided and why, with its D-number where it has one]
+  6. **Questions:** [everything waiting on the user, each one also on the to do list as WAITING ON USER]
+  7. **Traps:** [errors hit, what was tried and failed, and what NOT to do]
+  8. **Checks:** [how to check the work is right, and what has and has not been verified]
   ```
-- `Clean save: false` tells the next `/start` that work was mid-flight, so it will surface this under `🔄 Resume from last session`.
+- **The handover must be complete.** This is what the next session works from if this one is cut off, so every one of the eight parts is written in full, for a reader with no memory of this session: task IDs with what they are, full paths, commit hashes, the user's own words. A part with nothing in it says so in a few words ("No decisions since the last save"). Never trade detail for brevity here. The standard is in CLAUDE.md, `## HANDOVERS MUST BE COMPLETE`.
+- **The cold-read test:** read the handover back as an agent that has never seen this session. Could you carry on from it alone, without asking the user anything or rediscovering something this session already found? If not, add what is missing. The save is not finished until it passes.
+- `Clean save: false` tells the next `/start` that work was mid-flight, so it will surface this under `🔄 Resume from last session` and check the handover against git and the two lists.
 - SESSION_LOG.md remains the historical record; RESUME_STATE.md is the current-state slice.
 
 ### SESSION_LOG.md
@@ -120,6 +129,7 @@ Before proceeding to git, confirm every safeguard file was addressed. Output thi
 
 **Update verification:**
 - RESUME_STATE.md: [overwritten with current in-flight / work is between sub-tasks, snapshot captured]
+- Handover: [all eight parts written in RESUME_STATE.md, and it passes the cold-read test]
 - SESSION_LOG.md: [updated / already current, with the reason]
 - The two lists: [the checker's line; N added to the to do list, M moved to the done list / no task changes, with the reason]
 - COMMENTS.md: [N comments logged / no new comments this session]
@@ -138,6 +148,8 @@ Before proceeding to git, confirm every safeguard file was addressed. Output thi
   Do NOT log ordinary coding knowledge; only things a fresh agent would re-discover the hard way.
 
 **List check:** Did the checker come out clean? If not, every remaining flag is listed in the Step 4 confirmation with the reason it could not be fixed now.
+
+**Handover check:** Does RESUME_STATE.md's Handover have all eight parts, does every task it names match the to do list, does what it says about each file match `git status`, and does it pass the cold-read test? If not → go back and complete it now.
 
 **Feature trigger check:** Did the user **manually verify** any feature working end-to-end this session, or report one broken? Task completion does NOT count; only human verification does.
   If yes and FEATURE_LIST.json wasn't updated → go back and update it now.
@@ -170,7 +182,7 @@ Present a brief confirmation. Keep it concise, not a full report:
 ```
 ## Saved
 
-- RESUME_STATE.md: in-flight snapshot written (Clean save: false)
+- RESUME_STATE.md: in-flight snapshot and full handover written (Clean save: false)
 - SESSION_LOG.md: [updated/no changes needed]
 - The two lists: [the checker's line; N added to the to do list, M moved to the done list / no changes needed]
 - COMMENTS.md: [N comments added / no changes needed]

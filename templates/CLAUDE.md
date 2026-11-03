@@ -90,6 +90,27 @@ The rules:
 
 The checker flags: a to do list status not starting with one of the three words; a to do list row not re-checked for two sessions; "handed"; a task row outside the two tables; a done list Outcome or Tested value not in the fixed words; DONE without proof; DROPPED without the user's quoted words; the done list not newest first; the same ID on both lists.
 
+## HANDOVERS MUST BE COMPLETE
+
+A handover is anything one session writes so the next can carry on: RESUME_STATE.md at `/save`, the session's entry in SESSION_LOG.md at `/end`, a handover file written for another session or agent, and a `CONTEXT_GUARD_UPDATE.md` note. Each new session carrying on seamlessly from the last is the main thing Context Guard exists for, and a thin handover is where most mistakes start: the next agent guesses, repeats work, or undoes a decision nobody told it about.
+
+Every handover states all eight of these, in full:
+
+1. **Tasks:** every task ID touched, what each one is, exactly what is done, what is not, and where it stopped.
+2. **Files:** every file changed, and whether each one is committed, pushed, or still uncommitted, with the branch.
+3. **Next action:** the exact next step: the task ID, the file and section, the command, and the plan file and section if a plan governs it.
+4. **The user's words:** what the user wants next, quoted.
+5. **Decisions:** what was decided and why, with its D-number where it has one.
+6. **Questions:** everything waiting on the user, each one also on the to do list as `WAITING ON USER`.
+7. **Traps:** errors hit, what was tried and failed, and what NOT to do.
+8. **Checks:** how to check the work is right, and what has and has not been verified.
+
+Write it for a reader with no memory of this session. Name things exactly (a task ID with what it is, full paths, commit hashes, the user's own words), and never trade detail for brevity. A part with nothing in it says so in a few words ("No decisions this session"), so the reader knows it was checked, not forgotten.
+
+**The cold-read test.** Before a handover counts as written, read it back as an agent that has never seen this session. Could you carry on from it alone, without asking the user anything or rediscovering something this session already found? If not, add what is missing. A handover that fails the test is not finished.
+
+**`/start` checks the handover** against git and the two lists, and reports every gap or mismatch before any work begins.
+
 ## PRESERVE USER COMMENTS: MANDATORY
 
 Every comment the user makes in conversation MUST reach `COMMENTS.md` verbatim, with timestamp and session ID: directions, feedback, decisions, preferences, corrections, and anything else they say. `/save` and `/end` write them from the conversation. Failure to preserve comments is as dangerous to the project as deleting core files. Comments can be archived once actioned (turned into decisions, tasks, or file changes).

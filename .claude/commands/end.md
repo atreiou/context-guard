@@ -64,16 +64,28 @@ Check and update ALL of these:
   (No work in flight. This file is in its clean state.)
 
   ## Next step
-  (Nothing pending.)
+  [The exact next action in one line (or "Nothing pending."), then: Full handover: SESSION_LOG.md, Session N, Handover.]
   ```
-- `Clean save: true` tells the next `/start` that the previous session ended cleanly, so no mid-flight recovery is needed. The next-session intent still lives in SESSION_LOG.md's "Next step" field.
-- **The "Next step" section is the next session's only plan pointer, so make it precise.** `/start` no longer reads plan files, so whatever you write here is all the next agent gets. Name the exact task IDs, and if a plan governs the work, name the exact plan file *and the section within it* they should open. "Continue the migration" is useless. "Resume S12-004 at `plans/S11-002_auth-migration.md` §3 (session token rotation), where the schema change is done and the middleware is not" is a handoff.
+- `Clean save: true` tells the next `/start` that the previous session ended cleanly, so no mid-flight recovery is needed. The full handover lives in this session's SESSION_LOG.md entry (below).
+- **The "Next step" section is the next session's first pointer, so make it precise.** `/start` no longer reads plan files, so whatever you write here is all the next agent gets. Name the exact task IDs, and if a plan governs the work, name the exact plan file *and the section within it* they should open. "Continue the migration" is useless. "Resume S12-004 at `plans/S11-002_auth-migration.md` §3 (session token rotation), where the schema change is done and the middleware is not" is a handoff.
 
 ### SESSION_LOG.md
 - Add an entry for this session (or update the existing one)
 - Include: what happened, commits made, tasks completed, tasks remaining
-- **Next step:** Capture what the user wants done next, using their own words where possible. Not just a list of pending tasks, but the actual direction, priority, and intent. This is what the next session's /start will read to understand where to pick up.
-- **Errors encountered:** If any significant errors, blockers, or unexpected issues were hit during the session, log what happened and how it was resolved. Skip this if nothing notable occurred, and don't force empty sections. This prevents future sessions from repeating the same mistakes.
+- **End the entry with the handover.** This is what the next session's `/start` reads to pick up where this one stopped, and it is checked there against git and the two lists. Write all eight parts in full, for a reader with no memory of this session:
+  ```
+  **Handover:**
+  1. **Tasks:** [every task ID touched, what each one is, exactly what is done, what is not, and where it stopped]
+  2. **Files:** [every file changed, and whether each one is committed, pushed, or still uncommitted, with the branch]
+  3. **Next action:** [the exact next step: task ID, file and section, command, and the plan file and section if a plan governs it]
+  4. **The user's words:** [what the user wants next, quoted: the direction, priority and intent, not just a list of pending tasks]
+  5. **Decisions:** [what was decided and why, with D-numbers]
+  6. **Questions:** [everything waiting on the user, each one also on the to do list as WAITING ON USER]
+  7. **Traps:** [errors, blockers and surprises hit, how each was resolved, what was tried and failed, and what NOT to do]
+  8. **Checks:** [how to check the work is right, and what has and has not been verified]
+  ```
+  Name things exactly: task IDs with what they are, full paths, commit hashes, the user's own words. A part with nothing in it says so in a few words ("No decisions this session"). Never trade detail for brevity here: a thin handover is where the next session's mistakes start. The standard is in CLAUDE.md, `## HANDOVERS MUST BE COMPLETE`.
+- **The cold-read test:** read the handover back as an agent that has never seen this session. Could you carry on from it alone, without asking the user anything or rediscovering something this session already found? If not, add what is missing. `/end` is not finished until it passes.
 
 ### The two lists (TO_DO_LIST.md is the to do list, DONE_LIST.md is the done list)
 
@@ -186,8 +198,9 @@ An archived learned behaviour is still true. The index line is what stops a futu
 Before proceeding to git, confirm every safeguard file was addressed. Output this checklist:
 
 **Update verification:**
-- RESUME_STATE.md: wiped to clean state (Clean save: true)
+- RESUME_STATE.md: wiped to clean state (Clean save: true), Next step names the next action and points to the handover
 - SESSION_LOG.md: [updated / already current, with the reason]
+- Handover: [all eight parts written in this session's SESSION_LOG.md entry, and it passes the cold-read test]
 - The two lists: [the checker's line, which must say both lists clean; N added to the to do list, M moved to the done list, K re-checked / no task changes, with the reason]
 - COMMENTS.md: [N comments logged / no new comments this session]
 - DECISIONS.md: [N decisions logged (all have Category field) / no new decisions, checked: no architecture choices, algorithm choices, UI patterns, data model changes, naming conventions, or approach reversals this session]
@@ -208,6 +221,8 @@ Before proceeding to git, confirm every safeguard file was addressed. Output thi
 
 **List check:** Did the checker report both lists clean? If not → go back to Step 2 and fix the flagged rows. Only a flag that genuinely cannot be fixed now may remain, and it goes in the Step 6 report with the reason.
 
+**Handover check:** Does the SESSION_LOG.md entry's Handover have all eight parts, does every task it names match the two lists, does what it says about each file match `git status` and `git log`, and does it pass the cold-read test? If not → go back and complete it now. Write the Files part as it will stand after Step 4 (what this `/end` commits and pushes); Step 5 confirms it.
+
 If any file shows 0 changes, the reason must be specific (not "no changes needed").
 "No changes needed" without explanation is not acceptable. State what you checked.
 
@@ -221,7 +236,7 @@ If any file shows 0 changes, the reason must be specific (not "no changes needed
     - If the content clearly references a different project name, skip it.
     - If ambiguous (no project name found), skip it. Do not archive plans you can't confidently attribute.
 - Copy matched plans to `plans/S{session}-{seq}_{description}.md`
-- **DO NOT EXECUTE archived plans.** /end is a save point, not an execution trigger. If a plan was approved but not yet implemented, put its tasks on the to do list as PENDING and record it in SESSION_LOG.md's "Next step" field so /start picks it up.
+- **DO NOT EXECUTE archived plans.** /end is a save point, not an execution trigger. If a plan was approved but not yet implemented, put its tasks on the to do list as PENDING and name the plan file and section in the handover's Next action so /start picks it up.
 
 **Internal verification:** Check the **5 most recently modified** `.md` files in `~/.claude/plans/`. Read each file's first ~500 characters, match against the project name, and archive any that belong to this project. Do not output the verification details. Just report the result: either "Archived N plans: [list]" or "No new project plans found to archive."
 
@@ -259,6 +274,7 @@ Run these checks:
 - `git status` should be clean (no uncommitted changes)
 - `git log @{u}..HEAD --oneline` should be empty (nothing unpushed on this branch)
 - All Context Guard files should be up to date
+- The handover's Files part matches what was actually committed and pushed. If it does not, correct it now (and commit the correction where the session log is tracked)
 
 ## Step 6: Report
 
